@@ -1,5 +1,6 @@
 "use client"
 
+import type { ComponentType } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -9,7 +10,14 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { LayoutDashboard, Target, BarChart3, Trophy, Gift, Users, MessageCircle, LogOut } from "lucide-react"
 
-const navigationItems = [
+type NavItem = {
+  name: string
+  href: string
+  icon: ComponentType<any>
+  badge: string | null
+}
+
+const defaultNavItems: NavItem[] = [
   {
     name: "Panel de Control",
     href: "/dashboard/control",
@@ -54,7 +62,7 @@ const navigationItems = [
   },
 ]
 
-export function MobileSidebar() {
+export function MobileSidebar({ navItems = defaultNavItems }: { navItems?: NavItem[] }) {
   const pathname = usePathname()
   const { logout } = useAuth()
   const router = useRouter()
@@ -68,7 +76,7 @@ export function MobileSidebar() {
     <div className="flex h-full flex-col">
       {/* Navigation - Más compacto */}
       <nav className="flex-1 p-2 space-y-1">
-        {navigationItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           const Icon = item.icon
 

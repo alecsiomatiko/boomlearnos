@@ -1,3 +1,5 @@
+"use client"
+
 import type { ReactNode } from "react"
 import SaludSidebar from "@/components/salud/salud-sidebar"
 import { MobileSidebar } from "@/components/layout/mobile-sidebar"
