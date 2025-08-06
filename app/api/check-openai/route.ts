@@ -66,11 +66,11 @@ export async function GET() {
 
       connectionTest = true
       console.log("6. Conexión exitosa! Respuesta:", testResponse.choices[0]?.message?.content)
-    } catch (error) {
-      connectionError = error.message
-      console.log("6. Error de conexión:", error.message)
-      console.log("   Código de error:", error.code)
-      console.log("   Status:", error.status)
+    } catch (error: any) {
+      connectionError = error?.message || 'Unknown error'
+      console.log("6. Error de conexión:", error?.message)
+      console.log("   Código de error:", error?.code)
+      console.log("   Status:", error?.status)
     }
 
     return NextResponse.json({
@@ -86,11 +86,11 @@ export async function GET() {
       },
       connectionError: connectionError,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error en diagnóstico:", error)
     return NextResponse.json({
       status: "error",
-      message: `Error durante el diagnóstico: ${error.message}`,
+      message: `Error durante el diagnóstico: ${error?.message || 'Unknown error'}`,
       checks: {
         exists: false,
         format: false,

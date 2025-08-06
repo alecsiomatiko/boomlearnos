@@ -86,7 +86,7 @@ export default function ApiKeysPage() {
   return (
     <div className="container py-8">
       {showConfetti && (
-        <ConfettiExplosion duration={2000} particleCount={100} onComplete={() => setShowConfetti(false)} />
+        <ConfettiExplosion trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
       )}
 
       <div className="mb-8">

@@ -7,7 +7,7 @@ import DashboardSidebar from "@/components/layout/dashboard-sidebar"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export default function DashboardLayout({
   children,
@@ -16,7 +16,7 @@ export default function DashboardLayout({
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
 
   const handleSidebarToggle = (collapsed: boolean) => {
     setSidebarCollapsed(collapsed)

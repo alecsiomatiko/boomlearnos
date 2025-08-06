@@ -52,8 +52,7 @@ Devuelve SOLO el texto mejorado, sin comillas ni explicaciones.`,
           },
         ],
         temperature: 0.7,
-        max_tokens: 300,
-        timeout: 15000,
+        max_tokens: 300
       })
 
       const improved = completion.choices[0]?.message?.content?.trim()

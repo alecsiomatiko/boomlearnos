@@ -132,8 +132,7 @@ Avatares disponibles: rocket, target, zap, shield, heart`,
           },
         ],
         temperature: 0.7,
-        max_tokens: 800,
-        timeout: 25000,
+        max_tokens: 800
       })
 
       const content = completion.choices[0]?.message?.content?.trim()

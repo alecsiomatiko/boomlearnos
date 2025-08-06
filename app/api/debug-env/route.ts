@@ -66,11 +66,11 @@ export async function GET() {
         rawValue: apiKey ? "***OCULTO***" : null,
       },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error en debug:", error)
     return NextResponse.json({
       status: "error",
-      message: error.message,
+      message: error?.message || 'Unknown error',
       debug: {
         exists: false,
         error: true,

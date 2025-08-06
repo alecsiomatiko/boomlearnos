@@ -665,13 +665,12 @@ export default function ControlPage() {
                     {[1, 3, 5].map((level) => (
                       <div
                         key={level}
-                        className={`w-16 h-16 relative transition-all duration-300 ${
-                          (energyLevel[0] <= 2 && level === 1) ||
+                        className={`w-16 h-16 relative transition-all duration-300 ${(energyLevel[0] <= 2 && level === 1) ||
                           (energyLevel[0] === 3 && level === 3) ||
                           (energyLevel[0] >= 4 && level === 5)
-                            ? "opacity-100 scale-110 drop-shadow-lg"
-                            : "opacity-40 scale-90"
-                        }`}
+                          ? "opacity-100 scale-110 drop-shadow-lg"
+                          : "opacity-40 scale-90"
+                          }`}
                       >
                         <Image
                           src={getEnergyMascot(level) || "/placeholder.svg"}

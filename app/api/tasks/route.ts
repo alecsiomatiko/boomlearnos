@@ -18,20 +18,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    let query = `
+    const tasks = await sql`
       SELECT * FROM tasks 
-      WHERE user_id = $1 OR assigned_to = $1 OR created_by = $1
+      WHERE user_id = ${userId} OR assigned_to = ${userId} OR created_by = ${userId}
+      ${status ? sql`AND status = ${status}` : sql``}
+      ORDER BY due_date ASC, created_at DESC
     `
-    const params = [userId]
-
-    if (status) {
-      query += ` AND status = $2`
-      params.push(status)
-    }
-
-    query += ` ORDER BY due_date ASC, created_at DESC`
-
-    const tasks = await sql(query, params)
 
     return NextResponse.json({
       success: true,
