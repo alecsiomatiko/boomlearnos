@@ -7,54 +7,67 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { LayoutDashboard, Target, BarChart3, Trophy, Gift, Users, MessageCircle, LogOut } from "lucide-react"
+import {
+  LayoutDashboard,
+  Target,
+  BarChart3,
+  Trophy,
+  Gift,
+  Users,
+  MessageCircle,
+  LogOut,
+  type LucideIcon,
+} from "lucide-react"
 
-const navigationItems = [
+type NavItem = {
+  label: string
+  href: string
+  icon: LucideIcon
+  badge?: string | null
+}
+
+const defaultNavItems: NavItem[] = [
   {
-    name: "Panel de Control",
+    label: "Panel de Control",
     href: "/dashboard/control",
     icon: LayoutDashboard,
-    badge: null,
   },
   {
-    name: "Mega Diagnóstico",
+    label: "Mega Diagnóstico",
     href: "/dashboard/mega-diagnostico",
     icon: Target,
-    badge: null,
   },
   {
-    name: "Métricas",
+    label: "Métricas",
     href: "/dashboard/metricas",
     icon: BarChart3,
-    badge: null,
   },
   {
-    name: "Logros",
+    label: "Logros",
     href: "/dashboard/logros",
     icon: Trophy,
     badge: "3",
   },
   {
-    name: "Recompensas",
+    label: "Recompensas",
     href: "/dashboard/recompensas",
     icon: Gift,
-    badge: null,
   },
   {
-    name: "Equipo",
+    label: "Equipo",
     href: "/dashboard/equipo",
     icon: Users,
     badge: "2",
   },
   {
-    name: "Mensajes",
+    label: "Mensajes",
     href: "/dashboard/mensajes",
     icon: MessageCircle,
     badge: "5",
   },
 ]
 
-export function MobileSidebar() {
+export function MobileSidebar({ navItems = defaultNavItems }: { navItems?: NavItem[] }) {
   const pathname = usePathname()
   const { logout } = useAuth()
   const router = useRouter()
@@ -68,12 +81,12 @@ export function MobileSidebar() {
     <div className="flex h-full flex-col">
       {/* Navigation - Más compacto */}
       <nav className="flex-1 p-2 space-y-1">
-        {navigationItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           const Icon = item.icon
 
           return (
-            <Link key={item.name} href={item.href}>
+            <Link key={item.href} href={item.href}>
               <div
                 className={`flex items-center gap-2 px-2 py-2 rounded-lg transition-all duration-150 ${
                   isActive ? "bg-red-50 text-red-600" : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
@@ -83,7 +96,7 @@ export function MobileSidebar() {
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex items-center justify-between flex-1">
-                  <span className="font-medium text-xs">{item.name}</span>
+                  <span className="font-medium text-xs">{item.label}</span>
                   {item.badge && (
                     <Badge
                       variant="secondary"

@@ -1,4 +1,4 @@
-import { sql } from "./neon"
+import { sql } from "./mysql"
 
 // Tipos para el sistema de gemas
 export interface GemCalculation {

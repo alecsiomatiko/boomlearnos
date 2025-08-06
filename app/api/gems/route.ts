@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql, getOrCreateDefaultUser } from "@/lib/neon"
+import { sql, getOrCreateDefaultUser } from "@/lib/mysql"
 import { getGemsHistory, calculateLevel, getGemsForNextLevel } from "@/lib/gems-system"
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql, getOrCreateDefaultUser, getMockTasks, type Task } from "@/lib/neon"
+import { sql, getOrCreateDefaultUser, getMockTasks, type Task } from "@/lib/mysql"
 import { calculateGems, awardGems } from "@/lib/gems-system"
 
 export async function GET(request: NextRequest) {
@@ -19,13 +19,13 @@ export async function GET(request: NextRequest) {
     }
 
     let query = `
-      SELECT * FROM tasks 
-      WHERE user_id = $1 OR assigned_to = $1 OR created_by = $1
+      SELECT * FROM tasks
+      WHERE user_id = ? OR assigned_to = ? OR created_by = ?
     `
-    const params = [userId]
+    const params = [userId, userId, userId]
 
     if (status) {
-      query += ` AND status = $2`
+      query += ` AND status = ?`
       params.push(status)
     }
 
@@ -81,19 +81,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const result = await sql`
+    const insertResult: any = await sql`
       INSERT INTO tasks (
         user_id, title, description, category, difficulty, priority,
         due_date, estimated_hours, assigned_to, created_by
       ) VALUES (
         ${userId}, ${title}, ${description || ""}, ${category}, ${difficulty}, ${priority || "medium"},
         ${dueDate}, ${estimatedHours || 1}, ${assignedTo || userId}, ${createdBy || userId}
-      ) RETURNING *
+      )
     `
+
+    const task = await sql`SELECT * FROM tasks WHERE id = ${insertResult.insertId}`
 
     return NextResponse.json({
       success: true,
-      data: result[0],
+      data: task[0],
     })
   } catch (error) {
     console.error("Error creating task:", error)
@@ -149,7 +151,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Actualizar la tarea
-    const result = await sql`
+    await sql`
       UPDATE tasks SET
         status = ${status || task.status},
         completion_percentage = ${completionPercentage ?? task.completion_percentage},
@@ -158,12 +160,13 @@ export async function PUT(request: NextRequest) {
         completed_at = ${completedAt || task.completed_at},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${id}
-      RETURNING *
     `
+
+    const updated = await sql`SELECT * FROM tasks WHERE id = ${id}`
 
     return NextResponse.json({
       success: true,
-      data: result[0],
+      data: updated[0],
       gemsEarned,
     })
   } catch (error) {

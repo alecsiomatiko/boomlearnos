@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql, getOrCreateDefaultUser } from "@/lib/neon"
+import { sql, getOrCreateDefaultUser } from "@/lib/mysql"
 import { updateStreak, calculateStreakBonus, awardGems } from "@/lib/gems-system"
 
 export async function GET(request: NextRequest) {
@@ -82,15 +82,17 @@ export async function POST(request: NextRequest) {
     const energyGained = Math.max(10, Math.min(30, 100 - energyLevel))
 
     // Crear el check-in
-    const checkin = await sql`
+    const insertResult: any = await sql`
       INSERT INTO daily_checkins (
-        user_id, checkin_date, energy_level, priority_text, 
+        user_id, checkin_date, energy_level, priority_text,
         energy_gained, streak_bonus, gems_earned
       ) VALUES (
-        ${userId}, ${today}, ${energyLevel}, ${priorityText || ""}, 
+        ${userId}, ${today}, ${energyLevel}, ${priorityText || ""},
         ${energyGained}, ${streakBonus}, ${totalGems}
-      ) RETURNING *
+      )
     `
+
+    const checkin = await sql`SELECT * FROM daily_checkins WHERE id = ${insertResult.insertId}`
 
     // Otorgar gemas
     await awardGems(

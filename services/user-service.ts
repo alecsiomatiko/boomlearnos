@@ -1,4 +1,4 @@
-import { sql } from "@/lib/neon"
+import { sql } from "@/lib/mysql"
 import type { User, AuthUser, RegisterData } from "@/types/user"
 import bcrypt from 'bcryptjs'
 
@@ -35,7 +35,7 @@ export async function ensureUsersTableExists(): Promise<boolean> {
 
 export async function authenticateUser(email: string, password: string): Promise<AuthUser | null> {
   try {
-    // First try Neon database
+    // First try database
     const tableExists = await ensureUsersTableExists()
 
     if (tableExists) {
@@ -82,17 +82,17 @@ export async function registerUser(userData: RegisterData & { phone?: string; ci
       // const passwordHash = await bcrypt.hash(userData.password, 10)
       const passwordHash = "hashed_password" // Placeholder for development
 
-      const users = await sql`
+      await sql`
         INSERT INTO users (
-          email, 
-          password_hash, 
-          name, 
-          phone, 
-          city, 
-          business_type, 
-          role, 
-          level, 
-          points, 
+          email,
+          password_hash,
+          name,
+          phone,
+          city,
+          business_type,
+          role,
+          level,
+          points,
           gems,
           badges
         ) VALUES (
@@ -106,13 +106,14 @@ export async function registerUser(userData: RegisterData & { phone?: string; ci
           'Novice Explorer',
           0,
           0,
-          '[]'::jsonb
+          JSON_ARRAY()
         )
-        RETURNING *
       `
 
-      if (users.length > 0) {
-        const user = users[0]
+      const inserted = await sql`SELECT * FROM users WHERE id = LAST_INSERT_ID()`
+
+      if (inserted.length > 0) {
+        const user = inserted[0]
         return {
           id: user.id,
           email: user.email,

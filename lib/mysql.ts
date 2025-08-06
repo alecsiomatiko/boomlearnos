@@ -1,11 +1,43 @@
-import { neon } from "@neondatabase/serverless"
+import mysql from "mysql2/promise"
 
-// Configuración de la base de datos
-const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL
+const DB_HOST = process.env.DB_HOST || ""
+const DB_PORT = Number(process.env.DB_PORT || 3306)
+const DB_USER = process.env.DB_USER || ""
+const DB_PASSWORD = process.env.DB_PASSWORD || ""
+const DB_NAME = process.env.DB_NAME || ""
 
-export const sql = DATABASE_URL ? neon(DATABASE_URL) : null
+export const pool = DB_HOST && DB_USER && DB_NAME
+  ? mysql.createPool({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_NAME,
+    })
+  : null
 
-// Tipos para las entidades
+export async function sql(
+  strings: TemplateStringsArray | string,
+  ...values: any[]
+) {
+  if (!pool) return []
+
+  if (Array.isArray(strings)) {
+    const query = strings.reduce(
+      (acc, str, i) => acc + str + (i < values.length ? "?" : ""),
+      "",
+    )
+    const [rows] = await pool.execute(query, values)
+    return rows as any[]
+  }
+
+  const query = strings as string
+  const params = values[0] || []
+  const q = query.replace(/\$\d+/g, "?")
+  const [rows] = await pool.execute(q, params)
+  return rows as any[]
+}
+
 export interface User {
   id: string
   email: string
@@ -69,12 +101,10 @@ export interface DailyCheckin {
   created_at: string
 }
 
-// Función para obtener o crear usuario por defecto
 export async function getOrCreateDefaultUser(): Promise<User> {
   const defaultUserId = "550e8400-e29b-41d4-a716-446655440000"
 
-  if (!sql) {
-    // Retornar usuario mock cuando no hay base de datos
+  if (!pool) {
     return {
       id: defaultUserId,
       email: "admin@kalabasboom.com",
@@ -94,32 +124,40 @@ export async function getOrCreateDefaultUser(): Promise<User> {
   }
 
   try {
-    const users = await sql`
-      SELECT * FROM users WHERE id = ${defaultUserId}
-    `
-
+    const users = await sql`SELECT * FROM users WHERE id = ${defaultUserId}`
     if (users.length > 0) {
       return users[0] as User
     }
 
-    // Si no existe, crear el usuario por defecto
-    const newUser = await sql`
-      INSERT INTO users (
+    await sql`INSERT INTO users (
         id, email, name, phone, city, business_type, role, level, total_gems, current_streak, longest_streak, energy
       ) VALUES (
-        ${defaultUserId}, 'admin@kalabasboom.com', 'Administrador KalabasBoom', '+1234567890', 
+        ${defaultUserId}, 'admin@kalabasboom.com', 'Administrador KalabasBoom', '+1234567890',
         'Ciudad de México', 'Tecnología', 'admin', 5, 1250, 7, 15, 85
-      ) RETURNING *
-    `
+      )`
 
-    return newUser[0] as User
+    return {
+      id: defaultUserId,
+      email: "admin@kalabasboom.com",
+      name: "Administrador KalabasBoom",
+      phone: "+1234567890",
+      city: "Ciudad de México",
+      business_type: "Tecnología",
+      role: "admin",
+      level: 5,
+      total_gems: 1250,
+      current_streak: 7,
+      longest_streak: 15,
+      energy: 85,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
   } catch (error) {
     console.error("Error getting/creating default user:", error)
     throw error
   }
 }
 
-// Función para obtener tareas mock
 export async function getMockTasks(): Promise<Task[]> {
   return [
     {
@@ -172,3 +210,4 @@ export async function getMockTasks(): Promise<Task[]> {
     },
   ]
 }
+
