@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
+import bcrypt from 'bcrypt'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,8 +12,9 @@ export async function POST(request: NextRequest) {
 
     if (users.length > 0) {
       const user = users[0]
-      // Solo para pruebas, compara texto plano
-      if (password === user.password) {
+      // Comparar contraseña hasheada
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (isPasswordValid) {
         return NextResponse.json({
           success: true,
           user: {

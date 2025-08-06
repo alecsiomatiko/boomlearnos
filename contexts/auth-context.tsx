@@ -66,18 +66,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
+      console.log('🔍 [AUTH CONTEXT] Iniciando registro con datos:', userData)
       setIsLoading(true)
       const newUser = await registerUser(userData)
+      console.log('🔍 [AUTH CONTEXT] Respuesta de registerUser:', newUser)
 
       if (newUser) {
+        console.log('✅ [AUTH CONTEXT] Usuario registrado exitosamente, guardando en localStorage')
         setUser(newUser)
         localStorage.setItem("auth_user", JSON.stringify(newUser))
         return true
       }
 
+      console.log('❌ [AUTH CONTEXT] newUser es null, registro falló')
       return false
     } catch (error) {
-      console.error("Registration error:", error)
+      console.error("❌ [AUTH CONTEXT] Registration error:", error)
       return false
     } finally {
       setIsLoading(false)

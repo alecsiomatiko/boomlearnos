@@ -40,6 +40,7 @@ export interface RegisterData {
   name: string
   email: string
   password: string
+  confirmPassword?: string
   phone?: string
   city?: string
   businessType?: string
