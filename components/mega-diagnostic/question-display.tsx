@@ -1,6 +1,6 @@
 "use client"
 
-import type { MegaQuestion } from "@/types/mega-diagnostic"
+import type { DiagnosticQuestion } from "@/services/diagnostic-service"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 
 interface QuestionDisplayProps {
-  question: MegaQuestion
+  question: DiagnosticQuestion
   currentAnswers: string[]
   onAnswer: (questionId: string, selectedOptionIds: string[]) => void
   onNext: () => void
@@ -41,31 +41,31 @@ export function QuestionDisplay({
 
   return (
     <Card className="p-6 w-full max-w-2xl mx-auto">
-      <p className="text-sm text-muted-foreground mb-2">Ponderación de la pregunta: {question.ponderacionPregunta}</p>
-      <h2 className="text-2xl font-semibold mb-6 text-foreground">{question.pregunta}</h2>
+      <p className="text-sm text-muted-foreground mb-2">Ponderación de la pregunta: {question.weight}</p>
+      <h2 className="text-2xl font-semibold mb-6 text-foreground">{question.question_text}</h2>
 
-      {question.tipo === "single" && (
+      {question.question_type === "single" && (
         <RadioGroup value={currentAnswers[0] || ""} onValueChange={handleSingleChange} className="space-y-3">
-          {question.opciones.map((option) => (
+          {question.options.map((option) => (
             <Label
               key={option.id}
               htmlFor={`${question.id}-${option.id}`}
               className="flex items-center space-x-3 p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
             >
-              <RadioGroupItem value={option.id} id={`${question.id}-${option.id}`} />
+              <RadioGroupItem value={option.option_code} id={`${question.id}-${option.id}`} />
               <span className="text-lg flex-grow">
                 {option.emoji && <span className="mr-3">{option.emoji}</span>}
-                {option.text}
-                <span className="text-xs text-muted-foreground ml-2">(P: {option.ponderacion})</span>
+                {option.option_text}
+                <span className="text-xs text-muted-foreground ml-2">(P: {option.weight})</span>
               </span>
             </Label>
           ))}
         </RadioGroup>
       )}
 
-      {question.tipo === "multiple" && (
+      {question.question_type === "multiple" && (
         <div className="space-y-3">
-          {question.opciones.map((option) => (
+          {question.options.map((option) => (
             <Label
               key={option.id}
               htmlFor={`${question.id}-${option.id}`}
@@ -73,29 +73,23 @@ export function QuestionDisplay({
             >
               <Checkbox
                 id={`${question.id}-${option.id}`}
-                checked={currentAnswers.includes(option.id)}
-                onCheckedChange={() => handleMultipleChange(option.id)}
+                checked={currentAnswers.includes(option.option_code)}
+                onCheckedChange={() => handleMultipleChange(option.option_code)}
               />
               <span className="text-lg flex-grow">
                 {option.emoji && <span className="mr-3">{option.emoji}</span>}
-                {option.text}
-                <span className="text-xs text-muted-foreground ml-2">(P: {option.ponderacion})</span>
+                {option.option_text}
+                <span className="text-xs text-muted-foreground ml-2">(P: {option.weight})</span>
               </span>
             </Label>
           ))}
         </div>
       )}
 
-      {showFeedback && question.feedbackImmediato && currentAnswers.length > 0 && (
+      {showFeedback && question.feedback_text && currentAnswers.length > 0 && (
         <div className="mt-6 p-4 bg-sky-900/50 border border-sky-400/30 rounded-lg">
           <p className="text-sky-300 font-medium">💡 ¡Ese dato vale oro, crack!</p>
-          <p className="text-sky-400 text-sm">{question.feedbackImmediato}</p>
-        </div>
-      )}
-      {showFeedback && question.justificacion && currentAnswers.length > 0 && (
-        <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-400/30 rounded-lg text-xs text-yellow-400">
-          <p className="font-semibold">Justificación (Backstage):</p>
-          <p>{question.justificacion}</p>
+          <p className="text-sky-400 text-sm">{question.feedback_text}</p>
         </div>
       )}
 
@@ -103,7 +97,7 @@ export function QuestionDisplay({
         <Button onClick={onPrevious} disabled={isFirst} variant="outline">
           Anterior
         </Button>
-        <Button onClick={onNext} disabled={currentAnswers.length === 0 && question.tipo === "single"}>
+        <Button onClick={onNext} disabled={currentAnswers.length === 0 && question.question_type === "single"}>
           {isLast ? "Finalizar" : "Siguiente"}
         </Button>
       </div>

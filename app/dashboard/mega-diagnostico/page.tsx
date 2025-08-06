@@ -7,20 +7,46 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle, Clock, FileText, Plus, Shield, Bell, ClipboardList } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { initializeAndGetUserData } from "@/lib/data-utils"
+import { DiagnosticService, type DiagnosticModule } from "@/services/diagnostic-service"
 import type { User } from "@/types"
 
 export default function MegaDiagnosticoPage() {
   const [user, setUser] = useState<User | null>(null)
+  const [modules, setModules] = useState<DiagnosticModule[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [loadingModule, setLoadingModule] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
+    async function initialize() {
+      const currentUser = initializeAndGetUserData()
+      setUser(currentUser)
+
+      try {
+        const diagnosticModules = await DiagnosticService.getModules()
+        setModules(diagnosticModules)
+      } catch (error) {
+        console.error('Error fetching diagnostic modules:', error)
+      }
+    }
+
+    initialize()
   }, [])
 
-  const modules = [
+  const getModuleStatus = (module: DiagnosticModule) => {
+    const progress = (module.answered_questions / module.total_questions) * 100
+    return {
+      ...module,
+      progress,
+      status: progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending',
+      buttonText: progress === 100 ? 'Revisar / Repetir' : progress > 0 ? 'Continuar' : 'Comenzar',
+      route: `/onboarding/diagnostico?module=${module.module_code}`,
+    }
+  }
+
+  const processedModules = modules.map(getModuleStatus)
+
+  /*const demoModules = [
     {
       id: "modulo-0",
       title: "Módulo 0",
@@ -57,6 +83,7 @@ export default function MegaDiagnosticoPage() {
       route: "/onboarding/diagnostico?module=2",
     },
   ]
+  */
 
   const handleModuleClick = async (module: (typeof modules)[0]) => {
     setIsLoading(true)
@@ -74,8 +101,8 @@ export default function MegaDiagnosticoPage() {
     }
   }
 
-  const completedModules = modules.filter((m) => m.status === "completed").length
-  const totalQuestions = modules.reduce((acc, mod) => acc + mod.questions, 0)
+  const completedModules = modules.filter((m) => m.answered_questions === m.total_questions).length
+  const totalQuestions = modules.reduce((acc, mod) => acc + mod.total_questions, 0)
 
   if (!user) {
     return (
@@ -149,7 +176,7 @@ export default function MegaDiagnosticoPage() {
 
         {/* Modules Row - ARQUITECTURA CORREGIDA */}
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-          {modules.map((module, index) => (
+          {processedModules.map((module, index) => (
             <motion.div
               key={module.id}
               initial={{ opacity: 0, y: 20 }}
