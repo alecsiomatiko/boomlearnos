@@ -2,19 +2,26 @@ import { pool } from './mysql';
 
 export async function getDiagnosticModules() {
   try {
-    const [rows] = await pool.query(`
-      SELECT 
-        m.*,
-        COUNT(DISTINCT q.id) as total_questions,
-        0 as answered_questions
+    const [rows] = await pool.query(
+      `
+      SELECT
+        m.id,
+        m.module_code,
+        m.title,
+        m.description,
+        m.icon,
+        m.order_index,
+        COUNT(DISTINCT q.id) AS total_questions,
+        0 AS answered_questions
       FROM diagnostic_modules m
       LEFT JOIN diagnostic_submodules s ON s.module_id = m.id
       LEFT JOIN diagnostic_questions q ON q.submodule_id = s.id
       WHERE m.is_active = true
-      GROUP BY m.id
+      GROUP BY m.id, m.module_code, m.title, m.description, m.icon, m.order_index
       ORDER BY m.order_index
-    `);
-    return rows;
+    `
+    );
+    return rows as any[];
   } catch (error) {
     console.error('Error fetching diagnostic modules:', error);
     throw error;
