@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDiagnosticProgress } from '@/lib/server/mysql';
+import { getUserProgress } from '@/lib/server/diagnostic-service';
 
 export async function GET(request: Request) {
   try {
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const progress = await getDiagnosticProgress(userId, moduleId);
+    const progress = await getUserProgress(userId, moduleId);
     return NextResponse.json(progress);
   } catch (error) {
     console.error('Error fetching diagnostic progress:', error);

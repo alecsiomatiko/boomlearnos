@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saveUserAnswer } from '@/lib/server/mysql';
+import { saveUserAnswer } from '@/lib/server/diagnostic-service';
 
 export async function POST(request: Request) {
   try {

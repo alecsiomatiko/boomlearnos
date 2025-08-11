@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { calculateModuleScore } from '@/lib/server/mysql';
+import { calculateModuleScore } from '@/lib/server/diagnostic-service';
 
 export async function GET(request: Request) {
   try {
