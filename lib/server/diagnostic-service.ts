@@ -116,3 +116,57 @@ export async function getUserProgress(userId: string, moduleId: string) {
     throw error;
   }
 }
+
+export async function calculateModuleScore(userId: string, moduleId: string) {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        s.id as submodule_id,
+        s.title as submodule_title,
+        COALESCE(ua.calculated_score, 0) as user_score,
+        MAX(o.weight) as max_score
+      FROM diagnostic_questions q
+      JOIN diagnostic_submodules s ON q.submodule_id = s.id
+      LEFT JOIN diagnostic_options o ON o.question_id = q.id
+      LEFT JOIN user_diagnostic_answers ua ON ua.question_id = q.id AND ua.user_id = ?
+      WHERE s.module_id = ?
+      GROUP BY q.id, s.id, s.title, ua.calculated_score
+    `,
+      [userId, moduleId]
+    );
+
+    const breakdown: Record<string, { title: string; score: number; maxScore: number }> = {};
+    let totalScore = 0;
+    let maxPossibleScore = 0;
+
+    for (const row of rows as any[]) {
+      totalScore += row.user_score;
+      maxPossibleScore += row.max_score || 0;
+
+      if (!breakdown[row.submodule_id]) {
+        breakdown[row.submodule_id] = {
+          title: row.submodule_title,
+          score: 0,
+          maxScore: 0,
+        };
+      }
+      breakdown[row.submodule_id].score += row.user_score;
+      breakdown[row.submodule_id].maxScore += row.max_score || 0;
+    }
+
+    const percentageScore = maxPossibleScore
+      ? Number(((totalScore / maxPossibleScore) * 100).toFixed(2))
+      : 0;
+
+    return {
+      totalScore,
+      maxPossibleScore,
+      percentageScore,
+      breakdown,
+    };
+  } catch (error) {
+    console.error('Error calculating module score:', error);
+    throw error;
+  }
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getModuleQuestions } from '@/lib/server/mysql';
+import { getModuleQuestions } from '@/lib/server/diagnostic-service';
 
 export async function GET(request: Request) {
   try {
