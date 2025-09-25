@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise"
+import { randomUUID } from "crypto"
 
 // This file should only be imported by server components or API routes
 // Client components should import types from '@/types/mysql'
@@ -18,6 +19,11 @@ const dbConfig = {
 
 // Pool de conexiones
 export const pool = mysql.createPool(dbConfig)
+
+// Función para generar UUID
+export function generateUUID(): string {
+  return randomUUID()
+}
 
 // Función para ejecutar consultas
 export async function executeQuery(query: string, params: any[] = []) {

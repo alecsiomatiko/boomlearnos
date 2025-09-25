@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid"
 import type {
   User,
   Task,
@@ -10,6 +9,9 @@ import type {
   CorporateIdentity,
   Medal,
 } from "@/types"
+
+// Helper function to generate UUIDs
+const generateId = () => crypto.randomUUID()
 
 const sampleTasks: Omit<Task, "id" | "status" | "progress">[] = [
   {
@@ -352,7 +354,7 @@ function createDummyTasks(userId: string): Task[] {
   ]
 
   return taskTemplates.map((task, index) => ({
-    id: uuidv4(),
+    id: generateId(),
     title: task.title,
     description: `Descripción detallada para la tarea: "${task.title}". Asignada por el sistema para mejorar el área de ${task.category}.`,
     status: "pending",
@@ -388,7 +390,7 @@ export function getUser(): User | null {
   try {
     const userData = JSON.parse(storedUser)
     return {
-      id: userData.id || uuidv4(),
+      id: userData.id || generateId(),
       name: userData.name || "Usuario Demo",
       email: userData.email || "demo@example.com",
       companyName: userData.companyName || "Kalabasboom Inc.",
@@ -447,7 +449,7 @@ export function saveTask(task: Task): Task {
   } else {
     tasks.push({
       ...task,
-      id: task.id || uuidv4(),
+      id: task.id || generateId(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -485,7 +487,7 @@ export function initializeAndGetUserData(): User {
 
   // No user exists, create a new one with dummy data
   const newUser: User = {
-    id: uuidv4(),
+    id: generateId(),
     name: "Usuario Demo",
     email: "demo@example.com",
     companyName: "Kalabasboom Inc.",
@@ -532,7 +534,7 @@ export function saveDailyCheckIn(checkIn: DailyCheckIn): DailyCheckIn {
   } else {
     checkIns.push({
       ...checkIn,
-      id: checkIn.id || uuidv4(),
+      id: checkIn.id || generateId(),
       date: checkIn.date || today,
       createdAt: new Date().toISOString(),
     })
@@ -572,7 +574,7 @@ export function getComments(taskId: string): Comment[] {
 export function saveComment(comment: Comment): Comment {
   if (typeof window === "undefined") return comment
   const comments = getAllComments()
-  const newComment = { ...comment, id: comment.id || uuidv4(), createdAt: new Date().toISOString() }
+  const newComment = { ...comment, id: comment.id || generateId(), createdAt: new Date().toISOString() }
   comments.push(newComment)
   localStorage.setItem("comments", JSON.stringify(comments))
   return newComment
@@ -597,7 +599,7 @@ export function saveNotification(notification: Notification): Notification {
   const notifications = getAllNotifications()
   const newNotification = {
     ...notification,
-    id: notification.id || uuidv4(),
+    id: notification.id || generateId(),
     read: notification.read || false,
     createdAt: new Date().toISOString(),
   }

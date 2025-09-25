@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import PendingIdentityCard from "./pending-identity-card"
 
 interface IntroScreenProps {
   onSelectControl: () => void
@@ -12,19 +13,29 @@ interface IntroScreenProps {
 
 export default function IntroScreen({ onSelectControl, onSelectSalud }: IntroScreenProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <div className="w-full max-w-6xl mx-auto">
         {/* Title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-8"
         >
           <h1 className="text-6xl font-bold text-gray-900 mb-4">Dashboard</h1>
         </motion.div>
 
-        {/* Main Content - Reduced gap from gap-16 to gap-12 (approximately 10% closer) */}
+        {/* Pending Identity Alert */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-12"
+        >
+          <PendingIdentityCard />
+        </motion.div>
+
+        {/* Main Content */}
         <div className="flex items-center justify-center gap-12">
           {/* Panel de Control Card */}
           <motion.div

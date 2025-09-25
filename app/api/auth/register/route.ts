@@ -5,10 +5,12 @@ import bcrypt from 'bcrypt'
 interface RegisterRequestData {
   email: string;
   password: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   phone?: string;
   city?: string;
   businessType?: string;
+  position?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [BACKEND DEBUG] Datos recibidos:', userData)
 
     // Validación de campos requeridos
-    const requiredFields = ['email', 'password', 'name']
+    const requiredFields = ['email', 'password', 'firstName', 'lastName']
     const missingFields = requiredFields.filter(field => !userData[field])
 
     if (missingFields.length > 0) {
@@ -64,30 +66,42 @@ export async function POST(request: NextRequest) {
       INSERT INTO users (
         email, 
         password,
-        name, 
+        name,
+        first_name,
+        last_name, 
         phone,
         city,
         business_type,
+        position,
         role, 
         level,
         total_gems,
         current_streak,
         longest_streak,
-        energy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        energy,
+        onboarding_step,
+        onboarding_completed,
+        can_access_dashboard
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       userData.email,
       hashedPassword,
-      userData.name,
+      `${userData.firstName} ${userData.lastName}`,
+      userData.firstName,
+      userData.lastName,
       userData.phone || null,
       userData.city || null,
       userData.businessType || null,
+      userData.position || null,
       'user',
       1,
       0,
       0,
       0,
-      100
+      100,
+      1, // onboarding_step: 1 (identidad organizacional)
+      false, // onboarding_completed
+      false // can_access_dashboard
     ])
 
     console.log('🔍 [BACKEND DEBUG] Resultado de inserción:', result)
@@ -107,9 +121,14 @@ export async function POST(request: NextRequest) {
             id: user.id,
             email: user.email,
             name: user.name,
+            firstName: user.first_name,
+            lastName: user.last_name,
             role: user.role,
             level: user.level.toString(),
             total_gems: user.total_gems || 0,
+            onboardingStep: user.onboarding_step,
+            onboardingCompleted: user.onboarding_completed,
+            canAccessDashboard: user.can_access_dashboard,
             badges: [],
           }
         }

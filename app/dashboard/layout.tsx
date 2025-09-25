@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { ProtectedRoute } from "@/components/auth/protected-route"
+import OnboardingGuard from "@/components/auth/onboarding-guard"
 import DashboardSidebar from "@/components/layout/dashboard-sidebar"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,11 +33,18 @@ export default function DashboardLayout({
   const sidebarWidth = sidebarCollapsed ? 56 : 240
 
   if (isMainDashboard) {
-    return <ProtectedRoute>{children}</ProtectedRoute>
+    return (
+      <ProtectedRoute>
+        <OnboardingGuard>
+          {children}
+        </OnboardingGuard>
+      </ProtectedRoute>
+    )
   }
 
   return (
     <ProtectedRoute>
+      <OnboardingGuard>
       {isMobile ? (
         // Mobile Layout
         <div className="flex h-screen bg-gray-50">
@@ -89,6 +97,7 @@ export default function DashboardLayout({
           </motion.div>
         </div>
       )}
+      </OnboardingGuard>
     </ProtectedRoute>
   )
 }

@@ -30,20 +30,31 @@ export interface AuthUser {
   id: string
   email: string
   name: string
+  firstName?: string
+  lastName?: string
   role: string
   level: string
   total_gems: number
   badges: Badge[]
+  onboardingStep?: number
+  onboardingCompleted?: boolean
+  canAccessDashboard?: boolean
+  organization?: {
+    id: string
+    name: string
+  }
 }
 
 export interface RegisterData {
-  name: string
+  firstName: string
+  lastName: string
   email: string
   password: string
   confirmPassword?: string
   phone?: string
   city?: string
   businessType?: string
+  position?: string
 }
 
 export interface LoginData {

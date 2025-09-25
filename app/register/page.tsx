@@ -12,11 +12,13 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const { toast } = useToast()
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     city: "",
     businessType: "",
+    position: "",
     password: "",
     confirmPassword: "",
   })
@@ -34,7 +36,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     // Validation
-    if (!formData.name || !formData.email || !formData.phone || !formData.city || !formData.businessType || !formData.password || !formData.confirmPassword) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.city || !formData.businessType || !formData.position || !formData.password || !formData.confirmPassword) {
       toast({
         title: "Error de registro",
         description: "Todos los campos son obligatorios.",
@@ -87,12 +89,12 @@ export default function RegisterPage() {
       console.log('🔍 [REGISTER PAGE] Respuesta del registro:', success)
 
       if (success) {
-        console.log('✅ [REGISTER PAGE] Registro exitoso, redirigiendo...')
+        console.log('✅ [REGISTER PAGE] Registro exitoso, redirigiendo al onboarding...')
         toast({
           title: "¡Pre-registro exitoso!",
           description: "Tu cuenta de founder ha sido creada correctamente.",
         })
-        router.push("/dashboard")
+        router.push("/onboarding/identidad")
       } else {
         console.log('❌ [REGISTER PAGE] Registro falló, success es false')
         toast({
@@ -130,21 +132,38 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="px-8 py-8">
             <form onSubmit={handleRegister} className="space-y-6">
-              {/* Nombre */}
-              <div className="space-y-2">
-                <label htmlFor="name" className="block text-gray-800 text-sm font-medium">
-                  Nombre
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="Nombre"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-3 text-gray-800 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-0 text-base"
-                />
+              {/* Nombres */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="firstName" className="block text-gray-800 text-sm font-medium">
+                    Nombre
+                  </label>
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    placeholder="Nombre"
+                    required
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-3 text-gray-800 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-0 text-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="lastName" className="block text-gray-800 text-sm font-medium">
+                    Apellido
+                  </label>
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    placeholder="Apellido"
+                    required
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-3 text-gray-800 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-0 text-base"
+                  />
+                </div>
               </div>
 
               {/* Email */}
@@ -210,6 +229,23 @@ export default function RegisterPage() {
                   placeholder="Giro del Negocio"
                   required
                   value={formData.businessType}
+                  onChange={handleChange}
+                  className="w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-3 text-gray-800 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-0 text-base"
+                />
+              </div>
+
+              {/* Posición */}
+              <div className="space-y-2">
+                <label htmlFor="position" className="block text-gray-800 text-sm font-medium">
+                  Posición/Cargo
+                </label>
+                <input
+                  id="position"
+                  name="position"
+                  type="text"
+                  placeholder="Ej: CEO, Gerente, Fundador"
+                  required
+                  value={formData.position}
                   onChange={handleChange}
                   className="w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-3 text-gray-800 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-0 text-base"
                 />

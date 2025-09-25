@@ -3,12 +3,11 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
-import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 
 
 export const metadata: Metadata = {
-  title: "KalabasBoom - Plataforma de Aprendizaje",
+  title: "BoomLearnOS - Plataforma de Aprendizaje",
   description: "Plataforma de aprendizaje gamificada para empresas",
     generator: 'v0.dev'
 }
@@ -19,14 +18,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="es" className="light" suppressHydrationWarning>
       <body className={GeistSans.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   )

@@ -10,6 +10,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<boolean>
   logout: () => void
   isLoading: boolean
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     register,
     logout,
     isLoading,
+    loading: isLoading,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

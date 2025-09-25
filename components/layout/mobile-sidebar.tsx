@@ -1,6 +1,7 @@
 "use client"
 
 import type { ComponentType } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -63,9 +64,27 @@ const defaultNavItems: NavItem[] = [
 ]
 
 export function MobileSidebar({ navItems = defaultNavItems }: { navItems?: NavItem[] }) {
+  const [userProfile, setUserProfile] = useState<any>(null)
   const pathname = usePathname()
   const { logout } = useAuth()
   const router = useRouter()
+
+  // Cargar datos del perfil del usuario
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch('/api/user/profile')
+        const result = await response.json()
+        if (result.success) {
+          setUserProfile(result.profile)
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error)
+      }
+    }
+
+    fetchUserProfile()
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -111,12 +130,16 @@ export function MobileSidebar({ navItems = defaultNavItems }: { navItems?: NavIt
       <div className="p-2 border-t border-gray-100">
         <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500 text-white mb-2">
           <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarImage src="/placeholder.svg?height=32&width=32&text=JP" alt="Juan Pablo" />
-            <AvatarFallback className="bg-red-600 text-white font-bold text-xs">JP</AvatarFallback>
+            <AvatarImage src="/placeholder.svg?height=32&width=32&text=JP" alt={userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : "Usuario"} />
+            <AvatarFallback className="bg-red-600 text-white font-bold text-xs">
+              {userProfile ? `${userProfile.first_name?.[0] || ''}${userProfile.last_name?.[0] || ''}`.toUpperCase() : 'JP'}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold truncate">JUAN PABLO</div>
-            <div className="text-xs text-red-100">Admin</div>
+            <div className="text-xs font-bold truncate">
+              {userProfile ? `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.toUpperCase() : 'JUAN PABLO'}
+            </div>
+            <div className="text-xs text-red-100">{userProfile?.position || 'Admin'}</div>
           </div>
         </div>
         <Button

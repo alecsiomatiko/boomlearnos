@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, ShoppingBag, BarChart3, CheckCircle, DollarSign, Users, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, BarChart3, CheckCircle, DollarSign, Users, MessageSquare, ChevronLeft, ChevronRight, Brain } from 'lucide-react'
 
 const navigationItems = [
   {
@@ -24,6 +24,12 @@ const navigationItems = [
     href: "/dashboard/mega-diagnostico",
     icon: ShoppingBag,
     badge: null,
+  },
+  {
+    name: "Análisis IA",
+    href: "/dashboard/analisis",
+    icon: Brain,
+    badge: "Nuevo",
   },
   {
     name: "Métricas",
@@ -63,9 +69,27 @@ interface DashboardSidebarProps {
 
 export default function DashboardSidebar({ onToggle }: DashboardSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [userProfile, setUserProfile] = useState<any>(null)
   const pathname = usePathname()
   const { logout } = useAuth()
   const router = useRouter()
+
+  // Cargar datos del perfil del usuario
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch('/api/user/profile')
+        const result = await response.json()
+        if (result.success) {
+          setUserProfile(result.profile)
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error)
+      }
+    }
+
+    fetchUserProfile()
+  }, [])
 
   const handleToggle = () => {
     const newCollapsed = !isCollapsed
@@ -203,16 +227,20 @@ export default function DashboardSidebar({ onToggle }: DashboardSidebarProps) {
                 <Link href="/dashboard/perfil">
                   <div className="flex justify-center">
                     <Avatar className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-red-400 transition-all duration-200 bg-gray-800">
-                      <AvatarImage src="/placeholder.svg?height=48&width=48&text=JP" alt="Juan Pablo" />
-                      <AvatarFallback className="bg-gray-800 text-white font-bold text-lg">JP</AvatarFallback>
+                      <AvatarImage src={userProfile?.profileImage || "/placeholder.svg?height=48&width=48&text=JP"} alt={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Usuario"} />
+                      <AvatarFallback className="bg-gray-800 text-white font-bold text-lg">
+                        {userProfile ? `${userProfile.firstName?.[0] || ''}${userProfile.lastName?.[0] || ''}`.toUpperCase() : 'JP'}
+                      </AvatarFallback>
                     </Avatar>
                   </div>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" className="ml-2">
                 <div className="text-center">
-                  <div className="font-medium text-sm">JUAN PABLO</div>
-                  <div className="text-xs text-gray-500">Administrador</div>
+                  <div className="font-medium text-sm">
+                    {userProfile ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim().toUpperCase() : 'JUAN PABLO'}
+                  </div>
+                  <div className="text-xs text-gray-500">{userProfile?.position || 'Administrador'}</div>
                   <div className="text-xs text-gray-400 mt-1">Click para ver perfil</div>
                 </div>
               </TooltipContent>
@@ -223,12 +251,16 @@ export default function DashboardSidebar({ onToggle }: DashboardSidebarProps) {
               <div className="bg-red-500 rounded-2xl p-4 hover:bg-red-600 transition-colors cursor-pointer">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 flex-shrink-0 bg-gray-800">
-                    <AvatarImage src="/placeholder.svg?height=48&width=48&text=JP" alt="Juan Pablo" />
-                    <AvatarFallback className="bg-gray-800 text-white font-bold text-lg">JP</AvatarFallback>
+                    <AvatarImage src={userProfile?.profileImage || "/placeholder.svg?height=48&width=48&text=JP"} alt={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Usuario"} />
+                    <AvatarFallback className="bg-gray-800 text-white font-bold text-lg">
+                      {userProfile ? `${userProfile.firstName?.[0] || ''}${userProfile.lastName?.[0] || ''}`.toUpperCase() : 'JP'}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-white truncate">JUAN PABLO</div>
-                    <div className="text-xs text-red-100">Administrador</div>
+                    <div className="text-sm font-bold text-white truncate">
+                      {userProfile ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim().toUpperCase() : 'JUAN PABLO'}
+                    </div>
+                    <div className="text-xs text-red-100">{userProfile?.position || 'Administrador'}</div>
                   </div>
                 </div>
               </div>

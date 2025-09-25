@@ -1,200 +1,369 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState, useEffect } from 'react'
+import { useAuth } from "@/contexts/auth-context"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Bell, Eye, Shield, Users, Settings } from 'lucide-react'
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/hooks/use-toast"
+import { User, Building2, Edit, Save, X, Camera, Upload } from "lucide-react"
+import { ImageUploader } from "@/components/ui/image-uploader"
+
+interface UserProfile {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  position?: string
+  bio?: string
+  city?: string
+  profileImage?: string
+  organization: {
+    companyName: string
+    businessType: string
+    companySize: string
+    businessDescription: string
+    targetAudience?: string
+  }
+}
 
 export default function PerfilPage() {
-  const [activeTab, setActiveTab] = useState("cuenta")
+  const { user } = useAuth()
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProfile()
+    }
+  }, [user?.id])
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('/api/user/profile')
+      const data = await response.json()
+      
+      if (data.success) {
+        setProfile(data.profile)
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el perfil",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error de conexión",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!profile) return
+
+    setSaving(true)
+    try {
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile)
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        toast({
+          title: "Perfil actualizado",
+          description: "Los cambios se guardaron correctamente",
+        })
+        setIsEditing(false)
+      } else {
+        throw new Error(result.error)
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Error al guardar",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando perfil...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <Card>
+          <CardContent className="text-center py-12">
+            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Perfil no encontrado
+            </h3>
+            <p className="text-gray-600 mb-4">
+              No se pudo cargar la información del perfil
+            </p>
+            <Button onClick={fetchUserProfile} variant="outline">
+              Intentar de nuevo
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Configuración</h1>
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Perfil de Usuario</h1>
+          <p className="text-gray-600">Gestiona tu información personal y empresarial</p>
+        </div>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white rounded-lg p-1 shadow-sm">
-            <TabsTrigger 
-              value="cuenta" 
-              className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </>
+          ) : (
+            <Button 
+              onClick={() => setIsEditing(true)}
+              className="bg-red-500 hover:bg-red-600"
             >
-              Cuenta
-            </TabsTrigger>
-            <TabsTrigger 
-              value="apariencia"
-              className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
-            >
-              Apariencia
-            </TabsTrigger>
-            <TabsTrigger 
-              value="notificaciones"
-              className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
-            >
-              Notificaciones
-            </TabsTrigger>
-            <TabsTrigger 
-              value="privacidad"
-              className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
-            >
-              Privacidad
-            </TabsTrigger>
-            <TabsTrigger 
-              value="referidos"
-              className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
-            >
-              Referidos
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="cuenta" className="space-y-6">
-            {/* Información de Perfil */}
-            <Card className="shadow-lg rounded-2xl overflow-hidden">
-              <CardContent className="p-8">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-8">Información de Perfil</h2>
-                    
-                    <div className="flex gap-8">
-                      {/* Avatar y botón cambiar */}
-                      <div className="flex flex-col items-center space-y-3">
-                        <Avatar className="h-16 w-16 bg-gray-800">
-                          <AvatarImage src="/placeholder.svg?height=64&width=64&text=JP" alt="Juan Pablo" />
-                          <AvatarFallback className="bg-gray-800 text-white font-bold text-xl">JP</AvatarFallback>
-                        </Avatar>
-                        <Button 
-                          size="sm" 
-                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-medium"
-                        >
-                          Cambiar avatar
-                        </Button>
-                      </div>
-
-                      {/* Formulario */}
-                      <div className="flex-1 grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900">Nombre</label>
-                          <Input 
-                            placeholder="Nombre" 
-                            className="bg-gray-100 border-0 rounded-lg h-12 text-gray-500"
-                            defaultValue=""
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900">Número</label>
-                          <Input 
-                            placeholder="Número" 
-                            className="bg-gray-100 border-0 rounded-lg h-12 text-gray-500"
-                            defaultValue=""
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900">Empresa</label>
-                          <Input 
-                            placeholder="Empresa" 
-                            className="bg-gray-100 border-0 rounded-lg h-12 text-gray-500"
-                            defaultValue=""
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900">Correo</label>
-                          <Input 
-                            placeholder="Correo" 
-                            className="bg-gray-100 border-0 rounded-lg h-12 text-gray-500"
-                            defaultValue=""
-                          />
-                        </div>
-                        
-                        <div className="space-y-2 col-span-2">
-                          <label className="text-sm font-medium text-gray-900">Cargo</label>
-                          <Input 
-                            placeholder="Cargo" 
-                            className="bg-gray-100 border-0 rounded-lg h-12 text-gray-500"
-                            defaultValue=""
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end mt-8">
-                      <Button className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium">
-                        Guardar cambios
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Mascota */}
-                  <div className="ml-8">
-                    <img
-                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Artboard%2091-F6UUQN5pxrRHBj70oDTFTEeO84aFpV.png"
-                      alt="Mascota León"
-                      className="w-48 h-48 object-contain"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Zona de Peligro */}
-            <Card className="shadow-lg rounded-2xl overflow-hidden">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-red-600 mb-4">Zona de Peligro</h2>
-                <p className="text-gray-900 font-medium mb-2">Eliminar tu cuenta.</p>
-                <p className="text-gray-500 text-sm mb-6">Esta acción eliminará permanentemente tu cuenta y todos tus datos.</p>
-                <Button 
-                  variant="destructive" 
-                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium"
-                >
-                  Eliminar cuenta
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="apariencia" className="space-y-6">
-            <Card className="shadow-lg rounded-2xl">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Configuración de Apariencia</h2>
-                <p className="text-gray-600">Personaliza la apariencia de tu interfaz.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notificaciones" className="space-y-6">
-            <Card className="shadow-lg rounded-2xl">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Configuración de Notificaciones</h2>
-                <p className="text-gray-600">Gestiona cómo y cuándo recibir notificaciones.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="privacidad" className="space-y-6">
-            <Card className="shadow-lg rounded-2xl">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Configuración de Privacidad</h2>
-                <p className="text-gray-600">Controla tu privacidad y seguridad.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="referidos" className="space-y-6">
-            <Card className="shadow-lg rounded-2xl">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Programa de Referidos</h2>
-                <p className="text-gray-600">Invita amigos y obtén recompensas.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              <Edit className="h-4 w-4 mr-2" />
+              Editar Perfil
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Información Personal */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5 text-red-600" />
+            Información Personal
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Foto de Perfil */}
+          <div className="flex justify-center pb-6 border-b">
+            <ImageUploader
+              currentImage={profile.profileImage}
+              onImageChange={(imageUrl) => setProfile(prev => prev ? {...prev, profileImage: imageUrl} : null)}
+              disabled={!isEditing}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName">Nombre</Label>
+              <Input
+                id="firstName"
+                value={profile.firstName}
+                onChange={(e) => setProfile(prev => prev ? {...prev, firstName: e.target.value} : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Apellido</Label>
+              <Input
+                id="lastName"
+                value={profile.lastName}
+                onChange={(e) => setProfile(prev => prev ? {...prev, lastName: e.target.value} : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={profile.email}
+                disabled={true}
+                className="bg-gray-50"
+              />
+              <p className="text-xs text-gray-500 mt-1">El email no se puede modificar</p>
+            </div>
+            <div>
+              <Label htmlFor="phone">Teléfono</Label>
+              <Input
+                id="phone"
+                value={profile.phone || ''}
+                onChange={(e) => setProfile(prev => prev ? {...prev, phone: e.target.value} : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+                placeholder="Ej: +1 234 567 8900"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="position">Posición en la empresa</Label>
+              <Input
+                id="position"
+                value={profile.position || ''}
+                onChange={(e) => setProfile(prev => prev ? {...prev, position: e.target.value} : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+                placeholder="Ej: CEO, Fundador, Director General"
+              />
+            </div>
+            <div>
+              <Label htmlFor="city">Ciudad</Label>
+              <Input
+                id="city"
+                value={profile.city || ''}
+                onChange={(e) => setProfile(prev => prev ? {...prev, city: e.target.value} : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+                placeholder="Ej: Ciudad de México"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="bio">Descripción profesional</Label>
+            <Textarea
+              id="bio"
+              value={profile.bio || ''}
+              onChange={(e) => setProfile(prev => prev ? {...prev, bio: e.target.value} : null)}
+              disabled={!isEditing}
+              className={!isEditing ? "bg-gray-50" : ""}
+              placeholder="Cuéntanos sobre tu experiencia y rol..."
+              rows={3}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Información de la Empresa */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-red-600" />
+            Información de la Empresa
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="companyName">Nombre de la empresa</Label>
+              <Input
+                id="companyName"
+                value={profile.organization.companyName}
+                onChange={(e) => setProfile(prev => prev ? {
+                  ...prev, 
+                  organization: {...prev.organization, companyName: e.target.value}
+                } : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+              />
+            </div>
+            <div>
+              <Label htmlFor="businessType">Tipo de negocio</Label>
+              <Input
+                id="businessType"
+                value={profile.organization.businessType}
+                onChange={(e) => setProfile(prev => prev ? {
+                  ...prev, 
+                  organization: {...prev.organization, businessType: e.target.value}
+                } : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="companySize">Tamaño de la empresa</Label>
+            <Input
+              id="companySize"
+              value={profile.organization.companySize}
+              onChange={(e) => setProfile(prev => prev ? {
+                ...prev, 
+                organization: {...prev.organization, companySize: e.target.value}
+              } : null)}
+              disabled={!isEditing}
+              className={!isEditing ? "bg-gray-50" : ""}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="businessDescription">Descripción del negocio</Label>
+            <Textarea
+              id="businessDescription"
+              value={profile.organization.businessDescription}
+              onChange={(e) => setProfile(prev => prev ? {
+                ...prev, 
+                organization: {...prev.organization, businessDescription: e.target.value}
+              } : null)}
+              disabled={!isEditing}
+              className={!isEditing ? "bg-gray-50" : ""}
+              rows={3}
+            />
+          </div>
+
+          {profile.organization.targetAudience && (
+            <div>
+              <Label htmlFor="targetAudience">Audiencia objetivo</Label>
+              <Textarea
+                id="targetAudience"
+                value={profile.organization.targetAudience}
+                onChange={(e) => setProfile(prev => prev ? {
+                  ...prev, 
+                  organization: {...prev.organization, targetAudience: e.target.value}
+                } : null)}
+                disabled={!isEditing}
+                className={!isEditing ? "bg-gray-50" : ""}
+                rows={2}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

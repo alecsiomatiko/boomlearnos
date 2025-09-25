@@ -2,45 +2,131 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Clock, FileText, Plus, Shield, Bell, ClipboardList } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { CheckCircle, Clock, FileText, Plus, Shield, Bell, ClipboardList, Building2, Target, Eye, Brain } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { initializeAndGetUserData } from "@/lib/data-utils"
+import { getUser } from "@/lib/user-manager"
 import { DiagnosticService, type DiagnosticModule } from "@/services/diagnostic-service"
-import type { User } from "@/types"
+import { useResponseManager } from "@/hooks/use-response-manager"
+import type { User } from "@/types/user"
+import AIAnalysisComponent from "@/components/mega-diagnostic/ai-analysis"
+
+interface DiagnosticOverview {
+  onboardingDiagnostic: {
+    completed: boolean
+    completedAt: string | null
+    answers: Record<string, any>
+  }
+  organization: {
+    companyName: string
+    businessType: string
+    companySize: string
+    mission: string | null
+    vision: string | null
+  }
+}
+
+interface ModuleProgress {
+  moduleCode: string
+  isCompleted: boolean
+  completionPercentage: number
+  answeredQuestions: number
+  totalQuestions?: number
+}
 
 export default function MegaDiagnosticoPage() {
   const [user, setUser] = useState<User | null>(null)
   const [modules, setModules] = useState<DiagnosticModule[]>([])
+  const [diagnosticOverview, setDiagnosticOverview] = useState<DiagnosticOverview | null>(null)
+  const [moduleProgress, setModuleProgress] = useState<Record<string, ModuleProgress>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [loadingModule, setLoadingModule] = useState<string | null>(null)
+  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   const router = useRouter()
+  
+  // Hook para manejar respuestas
+  const { getUserResponses, checkModuleCompletion, isAuthenticated } = useResponseManager()
 
   useEffect(() => {
     async function initialize() {
-      const currentUser = initializeAndGetUserData()
+      const currentUser = await getUser()
       setUser(currentUser)
 
       try {
+        // Cargar módulos de diagnóstico
         const diagnosticModules = await DiagnosticService.getModules()
         setModules(diagnosticModules)
+
+        // Cargar overview de diagnósticos
+        const overviewResponse = await fetch('/api/diagnostics/overview')
+        const overviewData = await overviewResponse.json()
+        if (overviewData.success) {
+          setDiagnosticOverview(overviewData.diagnostics)
+        }
+
+        // Cargar progreso real de cada módulo desde las respuestas guardadas
+        if (isAuthenticated) {
+          await loadModuleProgress(diagnosticModules)
+        }
+
       } catch (error) {
-        console.error('Error fetching diagnostic modules:', error)
+        console.error('Error fetching diagnostic data:', error)
       }
     }
 
     initialize()
-  }, [])
+  }, [isAuthenticated])
+
+  const loadModuleProgress = async (diagnosticModules: DiagnosticModule[]) => {
+    console.log('🔍 [OVERVIEW] Cargando progreso real de módulos...')
+    
+    try {
+      const progressData: Record<string, ModuleProgress> = {}
+      
+      for (const module of diagnosticModules) {
+        const progress = await checkModuleCompletion(module.module_code)
+        
+        progressData[module.module_code] = {
+          moduleCode: module.module_code,
+          isCompleted: progress.isCompleted,
+          completionPercentage: progress.completionPercentage || 0,
+          answeredQuestions: progress.answeredQuestions || 0,
+          totalQuestions: module.total_questions || 10 // Fallback si no tenemos el total
+        }
+        
+        console.log(`📊 [OVERVIEW] Módulo ${module.module_code}: ${progress.completionPercentage}% completado`)
+      }
+      
+      setModuleProgress(progressData)
+    } catch (error) {
+      console.error('❌ [OVERVIEW] Error cargando progreso:', error)
+    }
+  }
 
   const getModuleStatus = (module: DiagnosticModule) => {
+    // Obtener el progreso real desde las respuestas guardadas
+    const realProgress = moduleProgress[module.module_code]
+    
+    if (realProgress) {
+      return {
+        ...module,
+        answered_questions: realProgress.answeredQuestions,
+        completion_percentage: realProgress.completionPercentage,
+        is_completed: realProgress.isCompleted
+      }
+    }
+
+    // Fallback al progreso por defecto del módulo
     const progress = (module.answered_questions / module.total_questions) * 100
     return {
       ...module,
       progress,
       status: progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'pending',
       buttonText: progress === 100 ? 'Revisar / Repetir' : progress > 0 ? 'Continuar' : 'Comenzar',
-      route: `/onboarding/diagnostico?module=${module.module_code}`,
+      route: `/dashboard/mega-diagnostico/${module.module_code}`,
     }
   }
 
@@ -91,7 +177,7 @@ export default function MegaDiagnosticoPage() {
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 800))
-      router.push(module.route)
+      router.push(`/dashboard/mega-diagnostico/${module.module_code}`)
     } catch (error) {
       console.error(`Error al cargar ${module.title}:`, error)
       alert(`Error al cargar ${module.title}. Por favor, intenta de nuevo.`)
@@ -101,7 +187,14 @@ export default function MegaDiagnosticoPage() {
     }
   }
 
-  const completedModules = modules.filter((m) => m.answered_questions === m.total_questions).length
+  // Calcular módulos completados del mega diagnóstico
+  const megaDiagnosticCompleted = modules.filter((m) => m.answered_questions === m.total_questions).length
+  
+  // Agregar el diagnóstico de onboarding al conteo (si existe)
+  const onboardingCompleted = diagnosticOverview?.onboardingDiagnostic?.completed ? 1 : 0
+  const totalModules = modules.length + 1 // mega diagnóstico + onboarding
+  const completedModules = megaDiagnosticCompleted + onboardingCompleted
+  
   const totalQuestions = modules.reduce((acc, mod) => acc + mod.total_questions, 0)
 
   if (!user) {
@@ -120,10 +213,132 @@ export default function MegaDiagnosticoPage() {
           <h1 className="text-3xl font-bold text-gray-900">
             Mega Diagnóstico<span className="text-red-500">.</span>
           </h1>
-          <div className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
-            <Bell className="h-6 w-6 text-gray-600" />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowAIAnalysis(!showAIAnalysis)}
+              className="flex items-center gap-2"
+            >
+              <Brain className="h-4 w-4" />
+              {showAIAnalysis ? 'Ocultar' : 'Ver'} Análisis IA
+            </Button>
+            <div className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
+              <Bell className="h-6 w-6 text-gray-600" />
+            </div>
           </div>
         </div>
+
+        {/* AI Analysis Section */}
+        {showAIAnalysis && (
+          <AIAnalysisComponent />
+        )}
+
+        {/* Resumen de la Empresa y Diagnóstico de Onboarding */}
+        {diagnosticOverview && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Información de la Empresa */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-red-600" />
+                  {diagnosticOverview.organization.companyName || 'Tu Empresa'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Tipo de Negocio</p>
+                    <p className="text-gray-900">{diagnosticOverview.organization.businessType || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Tamaño</p>
+                    <p className="text-gray-900">{diagnosticOverview.organization.companySize || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Estado de Identidad</p>
+                    <div className="flex items-center gap-2">
+                      {diagnosticOverview.organization.mission ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-green-600 font-medium">Completa</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="h-4 w-4 text-yellow-600" />
+                          <span className="text-yellow-600 font-medium">Pendiente</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Diagnóstico de Onboarding */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-red-600" />
+                  Diagnóstico de Onboarding
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {diagnosticOverview.onboardingDiagnostic.completed ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-600">Completado</span>
+                      {diagnosticOverview.onboardingDiagnostic.completedAt && (
+                        <span className="text-sm text-gray-500">
+                          el {new Date(diagnosticOverview.onboardingDiagnostic.completedAt).toLocaleDateString('es-ES')}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {Object.entries(diagnosticOverview.onboardingDiagnostic.answers || {}).slice(0, 3).map(([key, value]) => (
+                        <div key={key} className="p-2 bg-gray-50 rounded text-sm">
+                          <span className="font-medium capitalize text-gray-700">
+                            {key.replace(/_/g, ' ')}: 
+                          </span>
+                          <span className="ml-1 text-gray-900">
+                            {typeof value === 'string' ? value : JSON.stringify(value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push('/dashboard/diagnosticos/detalle/onboarding')}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Detalles Completos
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      Diagnóstico Pendiente
+                    </h3>
+                    <p className="text-gray-600 text-sm mb-3">
+                      Completa tu diagnóstico inicial para obtener insights valiosos
+                    </p>
+                    <Button 
+                      size="sm"
+                      onClick={() => router.push('/onboarding/diagnostico')}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      Completar Diagnóstico
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Main Hero Section */}
         <Card className="bg-white rounded-3xl shadow-md overflow-hidden border-0">
@@ -151,7 +366,7 @@ export default function MegaDiagnosticoPage() {
                 </div>
                 <p className="text-gray-500 text-sm">Módulos completados</p>
                 <p className="text-2xl font-bold text-black">
-                  {completedModules}/{modules.length}
+                  {Object.values(moduleProgress).filter(p => p.isCompleted).length || 0}/{Object.keys(moduleProgress).length || modules.length}
                 </p>
               </div>
 
@@ -159,8 +374,10 @@ export default function MegaDiagnosticoPage() {
                 <div className="bg-red-100 rounded-full p-3 mb-2">
                   <Clock className="h-6 w-6 text-red-500" />
                 </div>
-                <p className="text-gray-500 text-sm">Tiempo estimado</p>
-                <p className="text-2xl font-bold text-black">45 min</p>
+                <p className="text-gray-500 text-sm">Preguntas respondidas</p>
+                <p className="text-2xl font-bold text-black">
+                  {Object.values(moduleProgress).reduce((total, p) => total + p.answeredQuestions, 0) || 0}
+                </p>
               </div>
 
               <div className="flex flex-col items-center">
@@ -168,7 +385,9 @@ export default function MegaDiagnosticoPage() {
                   <CheckCircle className="h-6 w-6 text-red-500" />
                 </div>
                 <p className="text-gray-500 text-sm">Preguntas totales</p>
-                <p className="text-2xl font-bold text-black">{totalQuestions}</p>
+                <p className="text-2xl font-bold text-black">
+                  {Object.values(moduleProgress).reduce((total, p) => total + (p.totalQuestions || 0), 0) || modules.reduce((total, m) => total + (m.total_questions || 0), 0)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -187,13 +406,47 @@ export default function MegaDiagnosticoPage() {
                 {/* ESTRUCTURA CORRECTA: Header rojo con padding interno */}
                 <div className="p-4">
                   <div className="bg-red-500 rounded-t-2xl p-4 -mx-4 -mt-4">
-                    <h3 className="text-xl font-bold text-white">{module.title}</h3>
+                    <div className="flex items-center justify-between text-white">
+                      <h3 className="text-xl font-bold">{module.title}</h3>
+                      {/* Mostrar progreso real */}
+                      <div className="text-sm font-medium">
+                        {moduleProgress[module.module_code] ? (
+                          `${moduleProgress[module.module_code].answeredQuestions}/${moduleProgress[module.module_code].totalQuestions}`
+                        ) : (
+                          `${module.answered_questions || 0}/${module.total_questions || 10}`
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Body con padding apropiado */}
                 <CardContent className="px-4 pb-4 pt-0">
-                  <p className="text-gray-600 text-sm leading-relaxed mb-6 min-h-[4.5rem]">{module.description}</p>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-4 min-h-[4.5rem]">{module.description}</p>
+
+                  {/* Progreso visual */}
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-600">Progreso</span>
+                      <span className="text-sm font-bold text-gray-800">
+                        {moduleProgress[module.module_code] ? 
+                          `${Math.round(moduleProgress[module.module_code].completionPercentage)}%` : 
+                          `${Math.round((module.answered_questions / module.total_questions) * 100)}%`
+                        }
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-red-500 h-2 rounded-full transition-all duration-300" 
+                        style={{ 
+                          width: `${moduleProgress[module.module_code] ? 
+                            moduleProgress[module.module_code].completionPercentage : 
+                            ((module.answered_questions / module.total_questions) * 100)
+                          }%` 
+                        }}
+                      ></div>
+                    </div>
+                  </div>
 
                   <Button
                     className="w-full bg-red-500 hover:bg-red-600 text-white rounded-md shadow-sm transition-all duration-300 disabled:opacity-50 h-12"
@@ -206,7 +459,14 @@ export default function MegaDiagnosticoPage() {
                         <span>Cargando...</span>
                       </div>
                     ) : (
-                      <span>{module.buttonText}</span>
+                      <span>
+                        {moduleProgress[module.module_code]?.isCompleted ? 
+                          'Revisar / Repetir' : 
+                          moduleProgress[module.module_code]?.completionPercentage > 0 ? 
+                            'Continuar' : 
+                            'Comenzar'
+                        }
+                      </span>
                     )}
                   </Button>
                 </CardContent>

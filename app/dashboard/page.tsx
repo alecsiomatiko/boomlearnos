@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import IntroScreen from "@/components/dashboard/intro-screen"
 import { LayoutDashboard, Brain, BarChart3, Trophy, Gift, Users, MessageSquare } from "lucide-react"
-import { initializeAndGetUserData } from "@/lib/data-utils"
-import type { User } from "@/types"
+import { getUser } from "@/lib/user-manager"
+import type { User } from "@/types/user"
 
 const dashboardOptions = [
   {
@@ -85,8 +85,13 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
+    async function loadUser() {
+      console.log('🔍 [DASHBOARD] Iniciando carga de usuario...')
+      const user = await getUser()
+      console.log('✅ [DASHBOARD] Usuario cargado:', user.name)
+      setUser(user)
+    }
+    loadUser()
   }, [])
 
   const handleSelectControl = () => {

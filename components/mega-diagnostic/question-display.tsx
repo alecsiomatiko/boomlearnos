@@ -1,11 +1,13 @@
 "use client"
 
-import type { DiagnosticQuestion } from "@/services/diagnostic-service"
+import type { DiagnosticQuestion, DiagnosticOption } from "@/services/diagnostic-service"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
+import { useResponseManager } from "@/hooks/use-response-manager"
+import { useEffect, useState } from "react"
 
 interface QuestionDisplayProps {
   question: DiagnosticQuestion
@@ -16,6 +18,7 @@ interface QuestionDisplayProps {
   isFirst: boolean
   isLast: boolean
   showFeedback?: boolean
+  moduleId?: string // Agregamos moduleId para auto-guardado
 }
 
 export function QuestionDisplay({
@@ -27,26 +30,91 @@ export function QuestionDisplay({
   isFirst,
   isLast,
   showFeedback = true,
+  moduleId,
 }: QuestionDisplayProps) {
-  const handleSingleChange = (value: string) => {
-    onAnswer(question.id, [value])
-  }
+  const { saveSingleResponse, isAuthenticated } = useResponseManager();
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  const handleMultipleChange = (optionId: string) => {
+  const handleSingleChange = async (value: string) => {
+    onAnswer(question.id, [value]);
+    
+    // Auto-guardar la respuesta si el usuario está autenticado
+    if (isAuthenticated && moduleId) {
+      await autoSaveResponse(value);
+    }
+  };
+
+  const handleMultipleChange = async (optionId: string) => {
     const newAnswers = currentAnswers.includes(optionId)
       ? currentAnswers.filter((id) => id !== optionId)
-      : [...currentAnswers, optionId]
-    onAnswer(question.id, newAnswers)
-  }
+      : [...currentAnswers, optionId];
+    
+    onAnswer(question.id, newAnswers);
+    
+    // Para preguntas múltiples, guardamos la primera opción seleccionada
+    // (esto puede mejorarse para manejar respuestas múltiples)
+    if (isAuthenticated && moduleId && newAnswers.length > 0) {
+      await autoSaveResponse(newAnswers[0]);
+    }
+  };
+
+  const autoSaveResponse = async (selectedOptionCode: string) => {
+    try {
+      setAutoSaveStatus('saving');
+      
+      // Encontrar el ID de la opción seleccionada
+      const selectedOption = options.find(opt => opt.option_code === selectedOptionCode);
+      if (!selectedOption) {
+        console.warn('⚠️ Opción no encontrada para auto-guardado:', selectedOptionCode);
+        return;
+      }
+
+      const success = await saveSingleResponse(
+        parseInt(question.id), 
+        parseInt(selectedOption.id)
+      );
+      
+      setAutoSaveStatus(success ? 'saved' : 'error');
+      
+      // Resetear estado después de 2 segundos
+      setTimeout(() => setAutoSaveStatus('idle'), 2000);
+      
+    } catch (error) {
+      console.error('❌ Error en auto-guardado:', error);
+      setAutoSaveStatus('error');
+      setTimeout(() => setAutoSaveStatus('idle'), 2000);
+    }
+  };
+
+  // Debug: Log the question structure
+  console.log('Question object:', question);
+  console.log('Question options:', question.options);
+  console.log('Options type:', typeof question.options);
+
+  // Ensure options is an array
+  const options: DiagnosticOption[] = Array.isArray(question.options) 
+    ? question.options 
+    : (typeof question.options === 'string' 
+        ? JSON.parse(question.options) 
+        : []);
 
   return (
     <Card className="p-6 w-full max-w-2xl mx-auto">
-      <p className="text-sm text-muted-foreground mb-2">Ponderación de la pregunta: {question.weight}</p>
+      <div className="flex justify-between items-start mb-2">
+        <p className="text-sm text-muted-foreground">Ponderación de la pregunta: {question.weight}</p>
+        {autoSaveStatus !== 'idle' && (
+          <div className="text-xs px-2 py-1 rounded-full">
+            {autoSaveStatus === 'saving' && <span className="text-blue-500">💾 Guardando...</span>}
+            {autoSaveStatus === 'saved' && <span className="text-green-500">✅ Guardado</span>}
+            {autoSaveStatus === 'error' && <span className="text-red-500">❌ Error</span>}
+          </div>
+        )}
+      </div>
       <h2 className="text-2xl font-semibold mb-6 text-foreground">{question.question_text}</h2>
 
       {question.question_type === "single" && (
         <RadioGroup value={currentAnswers[0] || ""} onValueChange={handleSingleChange} className="space-y-3">
-          {question.options.map((option) => (
+          {options.map((option) => (
             <Label
               key={option.id}
               htmlFor={`${question.id}-${option.id}`}
@@ -65,7 +133,7 @@ export function QuestionDisplay({
 
       {question.question_type === "multiple" && (
         <div className="space-y-3">
-          {question.options.map((option) => (
+          {options.map((option) => (
             <Label
               key={option.id}
               htmlFor={`${question.id}-${option.id}`}

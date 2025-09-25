@@ -62,8 +62,8 @@ export async function registerUser(userData: RegisterData): Promise<AuthUser | n
       return null
     }
 
-    // Verificar que el usuario tenga todos los campos requeridos
-    const requiredFields = ['id', 'email', 'name', 'role', 'level', 'total_gems', 'badges']
+    // Verificar que el usuario tenga los campos mínimos requeridos
+    const requiredFields = ['id', 'email', 'name']
     const missingFields = requiredFields.filter(field => !(field in data.user))
 
     if (missingFields.length > 0) {
@@ -71,7 +71,7 @@ export async function registerUser(userData: RegisterData): Promise<AuthUser | n
       return null
     }
 
-    console.log('✅ [USER SERVICE] Usuario registrado exitosamente')
+    console.log('✅ [USER SERVICE] Usuario registrado exitosamente con datos completos:', data.user)
     return data.user
   } catch (error) {
     console.error('❌ [USER SERVICE] Error registering user:', error)
