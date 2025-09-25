@@ -203,24 +203,32 @@ async function migrarModulo0() {
     if (question.opciones) {
       for (let j = 0; j < question.opciones.length; j++) {
         const option = question.opciones[j];
-        
-        await executeQuery(`
-          INSERT INTO diagnostic_options (
-            option_code, question_code, option_text, weight,
-            display_order, is_active, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, NOW())
-          ON DUPLICATE KEY UPDATE
-            option_text = VALUES(option_text),
-            weight = VALUES(weight),
-            updated_at = NOW()
-        `, [
-          option.id,
-          question.id,
-          option.text,
-          option.ponderacion,
-          j + 1,
-          1
-        ]);
+        // Validación estricta de datos
+        if (!option || !option.id || !question.id || option.text == null || option.ponderacion == null) {
+          console.warn(`⚠️  Opción inválida detectada y omitida:`, { option, questionId: question.id });
+          continue;
+        }
+        try {
+          await executeQuery(`
+            INSERT INTO diagnostic_options (
+              option_code, question_code, option_text, weight,
+              display_order, is_active, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+              option_text = VALUES(option_text),
+              weight = VALUES(weight),
+              updated_at = NOW()
+          `, [
+            option.id,
+            question.id,
+            option.text,
+            option.ponderacion,
+            j + 1,
+            1
+          ]);
+        } catch (err) {
+          console.error('❌ Error insertando opción:', { option, questionId: question.id, error: err.message });
+        }
       }
     }
   }
@@ -298,24 +306,32 @@ async function migrarEtapa1() {
     if (question.opciones) {
       for (let j = 0; j < question.opciones.length; j++) {
         const option = question.opciones[j];
-        
-        await executeQuery(`
-          INSERT INTO diagnostic_options (
-            option_code, question_code, option_text, weight,
-            display_order, is_active, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, NOW())
-          ON DUPLICATE KEY UPDATE
-            option_text = VALUES(option_text),
-            weight = VALUES(weight),
-            updated_at = NOW()
-        `, [
-          option.id,
-          question.id,
-          option.text,
-          option.ponderacion,
-          j + 1,
-          1
-        ]);
+        // Validación estricta de datos
+        if (!option || !option.id || !question.id || option.text == null || option.ponderacion == null) {
+          console.warn(`⚠️  Opción inválida detectada y omitida:`, { option, questionId: question.id });
+          continue;
+        }
+        try {
+          await executeQuery(`
+            INSERT INTO diagnostic_options (
+              option_code, question_code, option_text, weight,
+              display_order, is_active, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+              option_text = VALUES(option_text),
+              weight = VALUES(weight),
+              updated_at = NOW()
+          `, [
+            option.id,
+            question.id,
+            option.text,
+            option.ponderacion,
+            j + 1,
+            1
+          ]);
+        } catch (err) {
+          console.error('❌ Error insertando opción:', { option, questionId: question.id, error: err.message });
+        }
       }
     }
   }
@@ -397,24 +413,32 @@ async function migrarEtapa2() {
         if (question.opciones) {
           for (let oIndex = 0; oIndex < question.opciones.length; oIndex++) {
             const option = question.opciones[oIndex];
-            
-            await executeQuery(`
-              INSERT INTO diagnostic_options (
-                option_code, question_code, option_text, weight,
-                display_order, is_active, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, NOW())
-              ON DUPLICATE KEY UPDATE
-                option_text = VALUES(option_text),
-                weight = VALUES(weight),
-                updated_at = NOW()
-            `, [
-              option.id,
-              question.id,
-              option.text,
-              option.ponderacion,
-              oIndex + 1,
-              1
-            ]);
+            // Validación estricta de datos
+            if (!option || !option.id || !question.id || option.text == null || option.ponderacion == null) {
+              console.warn(`⚠️  Opción inválida detectada y omitida:`, { option, questionId: question.id });
+              continue;
+            }
+            try {
+              await executeQuery(`
+                INSERT INTO diagnostic_options (
+                  option_code, question_code, option_text, weight,
+                  display_order, is_active, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                  option_text = VALUES(option_text),
+                  weight = VALUES(weight),
+                  updated_at = NOW()
+              `, [
+                option.id,
+                question.id,
+                option.text,
+                option.ponderacion,
+                oIndex + 1,
+                1
+              ]);
+            } catch (err) {
+              console.error('❌ Error insertando opción:', { option, questionId: question.id, error: err.message });
+            }
           }
         }
       }

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Intentar generar identidad con IA
     try {
       // Verificar si OpenAI está disponible - usando tu API key directamente
-      const openaiKey = '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'
+  const openaiKey = process.env.OPENAI_API_KEY
       if (!openaiKey || !openaiKey.startsWith('sk-')) {
         throw new Error('OpenAI API key no configurada')
       }
@@ -122,7 +122,7 @@ async function generateIdentityWithAI(data: any) {
   const { default: OpenAI } = await import('openai')
   
   const openai = new OpenAI({
-    apiKey: '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',
+  apiKey: process.env.OPENAI_API_KEY,
     timeout: 30000
   })
 
