@@ -13,6 +13,10 @@ export async function authenticateUser(email: string, password: string): Promise
     const data = await response.json()
 
     if (data.success) {
+      // ✅ GUARDAR TOKEN JWT
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
       return data.user
     }
 

@@ -1,4 +1,4 @@
-import { sql } from "./neon"
+import pool from "./mysql"
 
 // Tipos para el sistema de gemas
 export interface GemCalculation {
@@ -179,120 +179,110 @@ export async function awardGems(
   sourceId?: string,
   checkinId?: string,
   calculationDetails?: GemCalculation,
-): Promise<void> {
-  if (!sql) {
-    console.log(`Mock: Awarded ${amount} gems to user ${userId} for: ${description}`)
-    return
-  }
-
+): Promise<number> {
   try {
-    // Agregar al historial de gemas
-    await sql`
-      INSERT INTO gems_history (
-        user_id, 
-        source_type, 
-        source_id, 
-        gems_amount, 
-        description,
-        calculation_details
-      ) VALUES (
-        ${userId}, 
-        ${sourceId ? "task_completion" : checkinId ? "daily_checkin" : "manual"}, 
-        ${sourceId || checkinId || null}, 
-        ${amount}, 
-        ${description},
-        ${calculationDetails ? JSON.stringify(calculationDetails) : null}
-      )
-    `
+    const conn = await pool.getConnection();
+    try {
+      const sourceType = sourceId ? "task_completion" : checkinId ? "daily_checkin" : "manual";
+      const sourceRef = sourceId || checkinId || null;
+      const calcDetails = calculationDetails ? JSON.stringify(calculationDetails) : null;
 
-    // Actualizar total de gemas del usuario
-    await sql`
-      UPDATE users 
-      SET total_gems = total_gems + ${amount}, 
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${userId}
-    `
+      // Agregar al historial de gemas
+      await conn.query(
+        `INSERT INTO gems_history (user_id, source_type, source_id, gems_amount, description, calculation_details)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [userId, sourceType, sourceRef, amount, description, calcDetails]
+      );
 
-    console.log(`Awarded ${amount} gems to user ${userId} for: ${description}`)
+      // Actualizar total de gemas del usuario
+      const [updateResult] = await conn.query(
+        `UPDATE users SET total_gems = total_gems + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [amount, userId]
+      );
+
+      console.log(`[awardGems] Awarded ${amount} gems to user ${userId} for: ${description}`);
+      console.log(`[awardGems] Update result:`, updateResult);
+      
+      // Verify the update
+      const [userRows] = await conn.query(
+        `SELECT total_gems FROM users WHERE id = ?`,
+        [userId]
+      );
+      const newTotal = (userRows as any[])[0]?.total_gems ?? null;
+      console.log(`[awardGems] User total gems after update:`, { userId, newTotal });
+
+      // Return the updated total so callers can update UI immediately
+      return newTotal;
+    } finally {
+      conn.release();
+    }
   } catch (error) {
-    console.error("Error awarding gems:", error)
-    throw error
+    console.error("Error awarding gems:", error);
+    throw error;
   }
 }
 
 // Obtener historial de gemas
 export async function getGemsHistory(userId: string, limit = 10): Promise<any[]> {
-  if (!sql) {
-    return [
-      {
-        id: "1",
-        gems_amount: 94,
-        description: "Tarea completada: Revisar reportes mensuales",
-        source_type: "task_completion",
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: "2",
-        gems_amount: 25,
-        description: "Check-in diario completado",
-        source_type: "daily_checkin",
-        created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ]
-  }
-
   try {
-    const history = await sql`
-      SELECT 
-        gh.*,
-        t.title as task_title
-      FROM gems_history gh
-      LEFT JOIN tasks t ON gh.source_id = t.id AND gh.source_type = 'task_completion'
-      WHERE gh.user_id = ${userId}
-      ORDER BY gh.created_at DESC
-      LIMIT ${limit}
-    `
-
-    return history
+    const conn = await pool.getConnection();
+    try {
+      const [history] = await conn.query(
+        `SELECT gh.*, t.title as task_title
+         FROM gems_history gh
+         LEFT JOIN tasks t ON gh.source_id = t.id AND gh.source_type = 'task_completion'
+         WHERE gh.user_id = ?
+         ORDER BY gh.created_at DESC
+         LIMIT ?`,
+        [userId, limit]
+      );
+      return history as any[];
+    } finally {
+      conn.release();
+    }
   } catch (error) {
-    console.error("Error getting gems history:", error)
-    return []
+    console.error("Error getting gems history:", error);
+    return [];
   }
 }
 
 // Actualizar racha del usuario
 export async function updateStreak(userId: string): Promise<number> {
-  if (!sql) {
-    return 6 // Mock streak
-  }
-
   try {
-    const user = await sql`
-      SELECT current_streak, last_checkin FROM users WHERE id = ${userId}
-    `
+    const conn = await pool.getConnection();
+    try {
+      const [userRows] = await conn.query(
+        `SELECT current_streak, last_checkin FROM users WHERE id = ?`,
+        [userId]
+      );
+      const users = userRows as any[];
 
-    if (user.length === 0) return 0
+      if (users.length === 0) return 0;
 
-    const today = new Date().toISOString().split("T")[0]
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    let newStreak = 1
-    if (user[0].last_checkin === yesterday) {
-      newStreak = user[0].current_streak + 1
+      let newStreak = 1;
+      if (users[0].last_checkin === yesterday) {
+        newStreak = users[0].current_streak + 1;
+      }
+
+      await conn.query(
+        `UPDATE users 
+         SET current_streak = ?, 
+             longest_streak = GREATEST(longest_streak, ?),
+             last_checkin = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [newStreak, newStreak, today, userId]
+      );
+
+      return newStreak;
+    } finally {
+      conn.release();
     }
-
-    await sql`
-      UPDATE users 
-      SET current_streak = ${newStreak}, 
-          longest_streak = GREATEST(longest_streak, ${newStreak}),
-          last_checkin = ${today},
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${userId}
-    `
-
-    return newStreak
   } catch (error) {
-    console.error("Error updating streak:", error)
-    return 1
+    console.error("Error updating streak:", error);
+    return 1;
   }
 }

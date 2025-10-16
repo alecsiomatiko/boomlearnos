@@ -19,6 +19,7 @@ export default function RegisterPage() {
     city: "",
     businessType: "",
     position: "",
+    organizationName: "",
     password: "",
     confirmPassword: "",
   })
@@ -36,7 +37,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     // Validation
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.city || !formData.businessType || !formData.position || !formData.password || !formData.confirmPassword) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.city || !formData.businessType || !formData.position || !formData.organizationName || !formData.password || !formData.confirmPassword) {
       toast({
         title: "Error de registro",
         description: "Todos los campos son obligatorios.",
@@ -85,6 +86,7 @@ export default function RegisterPage() {
         ...formData,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
+        organizationName: formData.organizationName,
       })
       console.log('🔍 [REGISTER PAGE] Respuesta del registro:', success)
 
@@ -92,7 +94,7 @@ export default function RegisterPage() {
         console.log('✅ [REGISTER PAGE] Registro exitoso, redirigiendo al onboarding...')
         toast({
           title: "¡Pre-registro exitoso!",
-          description: "Tu cuenta de founder ha sido creada correctamente.",
+          description: "Tu cuenta de administrador ha sido creada correctamente.",
         })
         router.push("/onboarding/identidad")
       } else {
@@ -132,6 +134,22 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="px-8 py-8">
             <form onSubmit={handleRegister} className="space-y-6">
+              {/* Nombre de la organización */}
+              <div className="space-y-2">
+                <label htmlFor="organizationName" className="block text-gray-800 text-sm font-medium">
+                  Nombre de la organización
+                </label>
+                <input
+                  id="organizationName"
+                  name="organizationName"
+                  type="text"
+                  placeholder="Ej: Cero Uno Cero, Supernova, etc."
+                  required
+                  value={formData.organizationName}
+                  onChange={handleChange}
+                  className="w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-3 text-gray-800 placeholder-gray-400 focus:border-red-500 focus:outline-none focus:ring-0 text-base"
+                />
+              </div>
               {/* Nombres */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

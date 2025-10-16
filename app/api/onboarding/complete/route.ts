@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/server/mysql'
+import { executeQuery, generateUUID } from '@/lib/server/mysql'
 
 interface CompleteOnboardingData {
   userId: string;
@@ -52,14 +52,19 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Completar onboarding y habilitar acceso al dashboard
+    // Completar onboarding, habilitar acceso al dashboard y asignar rol admin
     await executeQuery(`
       UPDATE users 
       SET onboarding_completed = true, 
           can_access_dashboard = true,
-          onboarding_step = 'completed'
+          onboarding_step = 'completed',
+          role = 'admin'
       WHERE id = ?
     `, [data.userId])
+
+    // Obtener organization_id del usuario
+    const orgResult = await executeQuery('SELECT current_organization_id FROM users WHERE id = ?', [data.userId]) as any[];
+    const organizationId = orgResult && orgResult[0] ? orgResult[0].current_organization_id : null;
 
     // Otorgar gemas de bienvenida
     const welcomeGems = 50
@@ -79,15 +84,21 @@ export async function POST(request: NextRequest) {
     `, [data.userId, welcomeGems, welcomeGems])
 
     // Otorgar medalla de bienvenida (usando la estructura correcta de user_medals)
-    await executeQuery(`
-      INSERT INTO user_medals (user_id, medal_code, medal_name, medal_description)
-      VALUES (?, ?, ?, ?)
-    `, [
-      data.userId, 
-      'welcome-medal', 
-      'Bienvenido a BoomLearnOS',
-      'Completaste exitosamente el proceso de onboarding'
-    ])
+    if (organizationId) {
+      await executeQuery(`
+        INSERT INTO user_medals (id, user_id, organization_id, medal_code, medal_name, medal_description)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        generateUUID(),
+        data.userId,
+        organizationId,
+        'welcome-medal',
+        'Bienvenido a BoomLearnOS',
+        'Completaste exitosamente el proceso de onboarding'
+      ])
+    } else {
+      console.error('❌ [ONBOARDING] No se encontró organization_id para el usuario:', data.userId);
+    }
 
     console.log('✅ [ONBOARDING] Onboarding completado exitosamente')
 

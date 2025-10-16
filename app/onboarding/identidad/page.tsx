@@ -130,13 +130,13 @@ export default function IdentidadPage() {
           // IA no disponible - identidad pendiente
           toast({
             title: "Organización Creada",
-            description: "Tu organización se creó exitosamente. La identidad será completada en el panel de diagnósticos.",
+            description: "Tu organización se creó exitosamente. Continuemos con el diagnóstico.",
             duration: 5000,
           })
           
-          // Ir directamente al dashboard donde podrá completar la identidad
+          // Ir al diagnóstico para completar el flujo
           setTimeout(() => {
-            router.push('/dashboard')
+            router.push('/onboarding/diagnostico')
           }, 3000)
         }
       } else {

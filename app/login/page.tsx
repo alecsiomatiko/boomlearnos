@@ -24,6 +24,22 @@ export default function LoginPage() {
       const success = await login(email, password)
 
       if (success) {
+        // Verificar si el usuario necesita cambiar contraseña
+        const savedUser = localStorage.getItem('auth_user');
+        if (savedUser) {
+          const user = JSON.parse(savedUser);
+          
+          if (user.first_login === true) {
+            // Redirigir a cambio de contraseña obligatorio
+            toast({
+              title: "Cambio de contraseña requerido",
+              description: "Por seguridad, debes cambiar tu contraseña temporal.",
+            })
+            router.push("/change-password")
+            return;
+          }
+        }
+
         toast({
           title: "¡Bienvenido de vuelta!",
           description: "Has iniciado sesión correctamente.",

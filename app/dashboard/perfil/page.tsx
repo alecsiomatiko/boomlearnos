@@ -30,7 +30,7 @@ interface UserProfile {
 }
 
 export default function PerfilPage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -44,7 +44,15 @@ export default function PerfilPage() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch('/api/user/profile')
+      // Usar el ID del usuario autenticado
+      const userId = user?.id
+      if (!userId) {
+        console.error('No se encontró ID de usuario')
+        return
+      }
+
+      console.log('🔍 [PERFIL] Obteniendo perfil para userId:', userId)
+      const response = await fetch(`/api/user/profile?userId=${userId}`)
       const data = await response.json()
       
       if (data.success) {
@@ -72,10 +80,17 @@ export default function PerfilPage() {
 
     setSaving(true)
     try {
-      const response = await fetch('/api/user/profile', {
+      // Usar el ID del usuario autenticado
+      const userId = user?.id
+      if (!userId) {
+        throw new Error('No se encontró ID de usuario')
+      }
+
+      console.log('💾 [PERFIL] Guardando perfil para userId:', userId)
+      const response = await fetch(`/api/user/profile?userId=${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
+        body: JSON.stringify({ ...profile, userId })
       })
 
       const result = await response.json()
@@ -140,8 +155,15 @@ export default function PerfilPage() {
           <h1 className="text-2xl font-bold text-gray-900">Perfil de Usuario</h1>
           <p className="text-gray-600">Gestiona tu información personal y empresarial</p>
         </div>
-        
         <div className="flex gap-2">
+          {/* Botón Logout */}
+          <Button
+            variant="outline"
+            onClick={logout}
+            className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+          >
+            Cerrar sesión
+          </Button>
           {isEditing ? (
             <>
               <Button 

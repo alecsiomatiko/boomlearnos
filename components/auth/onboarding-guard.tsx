@@ -29,28 +29,39 @@ export default function OnboardingGuard({ children }: OnboardingGuardProps) {
 
     console.log('🔍 [ONBOARDING GUARD] User data:', {
       id: user.id,
+      role: user.role,
       onboardingStep: user.onboardingStep,
       onboardingCompleted: user.onboardingCompleted,
       canAccessDashboard: user.canAccessDashboard
     })
 
-    // Si el usuario no ha completado el onboarding, redirigir al paso correspondiente
-    if (user.onboardingCompleted === false) {
-      if (user.onboardingStep === 1 || !user.onboardingStep) {
-        console.log('🔍 [ONBOARDING GUARD] Redirecting to identity step')
-        router.push('/onboarding/identidad')
-      } else if (user.onboardingStep === 2) {
-        console.log('🔍 [ONBOARDING GUARD] Redirecting to diagnostic step')
-        router.push('/onboarding/diagnostico')
-      }
+    // Si es un empleado (no admin), saltar onboarding y ir directo al panel
+    if (user.role === 'user') {
+      console.log('✅ [ONBOARDING GUARD] Employee user, skipping onboarding')
+      setIsChecking(false)
       return
     }
 
-    // Si no puede acceder al dashboard, mantenerlo en onboarding
-    if (user.canAccessDashboard === false) {
-      console.log('🔍 [ONBOARDING GUARD] Cannot access dashboard, redirecting to identity')
-      router.push('/onboarding/identidad')
-      return
+    // Solo admins pasan por el proceso de onboarding
+    if (user.role === 'admin') {
+      // Si el admin no ha completado el onboarding, redirigir al paso correspondiente
+      if (user.onboardingCompleted === false) {
+        if (user.onboardingStep === 1 || !user.onboardingStep) {
+          console.log('🔍 [ONBOARDING GUARD] Admin redirecting to identity step')
+          router.push('/onboarding/identidad')
+        } else if (user.onboardingStep === 2) {
+          console.log('🔍 [ONBOARDING GUARD] Admin redirecting to diagnostic step')
+          router.push('/onboarding/diagnostico')
+        }
+        return
+      }
+
+      // Si no puede acceder al dashboard, mantenerlo en onboarding
+      if (user.canAccessDashboard === false) {
+        console.log('🔍 [ONBOARDING GUARD] Admin cannot access dashboard, redirecting to identity')
+        router.push('/onboarding/identidad')
+        return
+      }
     }
 
     console.log('✅ [ONBOARDING GUARD] User can access dashboard')

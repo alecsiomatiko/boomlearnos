@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Permitir rol personalizado (admin/user) si viene del frontend, por defecto 'user'
+    const role = userData.role && (userData.role === 'admin' || userData.role === 'user') ? userData.role : 'user';
     const result: any = await executeQuery(`
       INSERT INTO users (
         email, 
@@ -81,8 +83,9 @@ export async function POST(request: NextRequest) {
         energy,
         onboarding_step,
         onboarding_completed,
-        can_access_dashboard
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        can_access_dashboard,
+        first_login
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       userData.email,
       hashedPassword,
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
       userData.city || null,
       userData.businessType || null,
       userData.position || null,
-      'user',
+      role,
       1,
       0,
       0,
@@ -101,8 +104,9 @@ export async function POST(request: NextRequest) {
       100,
       1, // onboarding_step: 1 (identidad organizacional)
       false, // onboarding_completed
-      false // can_access_dashboard
-    ])
+      false, // can_access_dashboard
+      false // first_login: false para usuarios que se registran normalmente
+    ]);
 
     console.log('🔍 [BACKEND DEBUG] Resultado de inserción:', result)
     
@@ -111,10 +115,17 @@ export async function POST(request: NextRequest) {
       console.log('✅ [BACKEND DEBUG] Usuario insertado exitosamente, obteniendo datos...')
       
       // Obtener el usuario recién creado usando el email ya que es único
-      const newUser = await executeQuery('SELECT * FROM users WHERE email = ?', [userData.email]) as any[];
-      
-      if (newUser && newUser.length > 0) {
-        const user = newUser[0];
+      const newUserArr = await executeQuery('SELECT * FROM users WHERE email = ?', [userData.email]) as any[];
+      if (newUserArr && newUserArr.length > 0) {
+        const user = newUserArr[0];
+        // Si es admin, crear organización automáticamente
+        if (user.role === 'admin') {
+          const orgName = userData.organizationName || `${user.first_name} ${user.last_name} Org`;
+          await executeQuery(
+            'INSERT INTO organizations (id, name, owner_user_id) VALUES (?, ?, ?)',
+            [user.id, orgName, user.id]
+          );
+        }
         const userResponse = {
           success: true,
           user: {
@@ -131,7 +142,7 @@ export async function POST(request: NextRequest) {
             canAccessDashboard: user.can_access_dashboard,
             badges: [],
           }
-        }
+        };
         console.log('✅ [BACKEND DEBUG] Enviando respuesta exitosa:', userResponse)
         return NextResponse.json(userResponse)
       } else {

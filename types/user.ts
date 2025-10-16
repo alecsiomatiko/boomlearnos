@@ -14,7 +14,7 @@ export interface User {
   phone?: string
   city?: string
   business_type?: string
-  role: string
+  role: 'user' | 'admin'
   level: string
   total_gems: number
   current_streak: number
@@ -32,13 +32,16 @@ export interface AuthUser {
   name: string
   firstName?: string
   lastName?: string
-  role: string
+  role: 'user' | 'admin'
   level: string
   total_gems: number
   badges: Badge[]
   onboardingStep?: number
   onboardingCompleted?: boolean
   canAccessDashboard?: boolean
+  first_login?: boolean
+  phone?: string
+  permissions?: any
   organization?: {
     id: string
     name: string
@@ -55,6 +58,7 @@ export interface RegisterData {
   city?: string
   businessType?: string
   position?: string
+  organizationName?: string
 }
 
 export interface LoginData {

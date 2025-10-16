@@ -119,7 +119,8 @@ export async function POST(request: NextRequest) {
     console.log('✅ [ONBOARDING] Organización creada con ID:', organizationId)
 
     // Actualizar usuario con la organización y el siguiente paso
-    const nextStep = identityStatus === 'ai_generated' ? 'diagnostic' : 'business'
+    // Siempre ir al diagnóstico independientemente del estado de la IA
+    const nextStep = 'diagnostic'
     
     console.log('🔄 [ONBOARDING] Actualizando usuario...');
     console.log('- identityStatus:', identityStatus);

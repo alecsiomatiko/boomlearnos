@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, ShoppingBag, BarChart3, CheckCircle, DollarSign, Users, MessageSquare, ChevronLeft, ChevronRight, Brain } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, BarChart3, CheckCircle, DollarSign, Users, MessageSquare, ChevronLeft, ChevronRight, Brain, Settings } from 'lucide-react'
 
 const navigationItems = [
   {
@@ -71,25 +71,52 @@ export default function DashboardSidebar({ onToggle }: DashboardSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const router = useRouter()
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin'
 
   // Cargar datos del perfil del usuario
   useEffect(() => {
     const fetchUserProfile = async () => {
+      if (!user?.id) return;
       try {
-        const response = await fetch('/api/user/profile')
+        const response = await fetch(`/api/user/profile?userId=${user.id}`)
         const result = await response.json()
         if (result.success) {
-          setUserProfile(result.profile)
+          // Mapear todos los campos relevantes
+          setUserProfile({
+            id: result.profile.id,
+            firstName: result.profile.firstName,
+            lastName: result.profile.lastName,
+            email: result.profile.email,
+            phone: result.profile.phone,
+            position: result.profile.position,
+            bio: result.profile.bio,
+            city: result.profile.city,
+            role: result.profile.role,
+            totalGems: result.profile.totalGems,
+            profileImage: result.profile.profileImage,
+            organization: result.profile.organization
+          })
         }
       } catch (error) {
         console.error('Error fetching user profile:', error)
       }
     }
-
     fetchUserProfile()
-  }, [])
+  }, [user?.id])
+
+  // Sync sidebar displayed gems when auth context updates (total_gems)
+  useEffect(() => {
+    if (!userProfile || !user) return
+    // If AuthContext user has updated total_gems, reflect it in the sidebar
+    const totalGemsFromAuth = (user as any).total_gems ?? (user as any).totalGems ?? null;
+    if (totalGemsFromAuth !== null) {
+      setUserProfile((prev: any) => ({ ...prev, totalGems: totalGemsFromAuth }))
+    }
+  }, [user?.total_gems, (user as any)?.totalGems])
 
   const handleToggle = () => {
     const newCollapsed = !isCollapsed
@@ -216,6 +243,74 @@ export default function DashboardSidebar({ onToggle }: DashboardSidebarProps) {
 
             return navItem
           })}
+
+          {/* Admin Panel Link - Only for admins */}
+          {isAdmin && (
+            <>
+              <div className={`${isCollapsed ? "mx-4" : "mx-0"} my-4 border-t border-gray-200`}></div>
+              
+              {(() => {
+                const isActive = pathname.startsWith('/admin')
+                const adminNavItem = (
+                  <Link href="/admin">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`flex items-center ${
+                        isCollapsed ? "justify-center py-4" : "gap-4 py-3 px-4"
+                      } rounded-xl transition-all duration-200 relative group ${
+                        isActive 
+                          ? "bg-purple-50 text-purple-600" 
+                          : "text-gray-600 hover:bg-purple-50 hover:text-purple-600"
+                      }`}
+                    >
+                      <div className="flex-shrink-0">
+                        <Settings className={`${isCollapsed ? "h-6 w-6" : "h-5 w-5"} ${isActive ? "text-purple-600" : "text-purple-500"}`} />
+                      </div>
+
+                      <AnimatePresence>
+                        {!isCollapsed && (
+                          <motion.div
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex items-center justify-between flex-1"
+                          >
+                            <span className="font-medium text-sm">Admin Panel</span>
+                            <Badge
+                              variant="secondary"
+                              className="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full"
+                            >
+                              Admin
+                            </Badge>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </Link>
+                )
+
+                if (isCollapsed) {
+                  return (
+                    <Tooltip key="admin-panel">
+                      <TooltipTrigger asChild>{adminNavItem}</TooltipTrigger>
+                      <TooltipContent side="right" className="ml-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">Admin Panel</span>
+                          <Badge className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
+                            Admin
+                          </Badge>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                }
+
+                return adminNavItem
+              })()}
+            </>
+          )}
         </nav>
 
         {/* User Profile */}

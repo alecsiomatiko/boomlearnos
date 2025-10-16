@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import IntroScreen from "@/components/dashboard/intro-screen"
 import { LayoutDashboard, Brain, BarChart3, Trophy, Gift, Users, MessageSquare } from "lucide-react"
 import { getUser } from "@/lib/user-manager"
+import { useAuth } from "@/contexts/auth-context"
 import type { User } from "@/types/user"
 
 const dashboardOptions = [
@@ -82,17 +83,28 @@ const dashboardOptions = [
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
+  const { user: authUser } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     async function loadUser() {
       console.log('🔍 [DASHBOARD] Iniciando carga de usuario...')
-      const user = await getUser()
+      
+      // Verificar si el usuario autenticado es admin
+      if (authUser && authUser.role !== 'admin') {
+        console.log('🚫 [DASHBOARD] Usuario no es admin, redirigiendo al panel de control...')
+        router.push("/dashboard/control")
+        return
+      }
+      
+      // Usar el ID del usuario autenticado
+      const userId = authUser?.id
+      const user = await getUser(userId)
       console.log('✅ [DASHBOARD] Usuario cargado:', user.name)
       setUser(user)
     }
     loadUser()
-  }, [])
+  }, [authUser, router])
 
   const handleSelectControl = () => {
     router.push("/dashboard/control")
@@ -108,6 +120,11 @@ export default function DashboardPage() {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
       </div>
     )
+  }
+
+  // Solo mostrar el selector de dashboard para administradores
+  if (authUser?.role !== 'admin') {
+    return null // El useEffect ya redirige, pero por seguridad
   }
 
   return <IntroScreen onSelectControl={handleSelectControl} onSelectSalud={handleSelectSalud} />

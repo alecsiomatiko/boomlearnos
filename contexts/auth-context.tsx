@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   register: (userData: RegisterData) => Promise<boolean>
   logout: () => void
+  updateUser: (userData: Partial<AuthUser>) => void
   isLoading: boolean
   loading: boolean
 }
@@ -31,16 +32,86 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Función para refrescar datos del usuario desde el servidor
+  const refreshUserProfile = async (userId: string) => {
+    try {
+      console.log('🔄 [AUTH] Refrescando perfil del usuario:', userId);
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('❌ [AUTH] No hay token disponible');
+        return;
+      }
+
+      console.log('🔄 [AUTH] Token encontrado, haciendo fetch...');
+      const response = await fetch(`/api/user/profile?userId=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('🔄 [AUTH] Response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ [AUTH] Datos recibidos:', data);
+        console.log('✅ [AUTH] data.success:', data.success);
+        console.log('✅ [AUTH] data.profile:', data.profile);
+        console.log('✅ [AUTH] data.profile?.totalGems:', data.profile?.totalGems);
+        
+        if (data.success && data.profile) {
+          const updatedUser = {
+            ...user,
+            id: userId,
+            email: data.profile.email,
+            name: `${data.profile.firstName} ${data.profile.lastName}`,
+            firstName: data.profile.firstName,
+            lastName: data.profile.lastName,
+            role: data.profile.role,
+            total_gems: data.profile.totalGems,
+            level: data.profile.level || '1',
+            badges: [],
+            organization: data.profile.organization,
+            first_login: data.profile.first_login
+          } as AuthUser;
+          
+          console.log('✅ [AUTH] Usuario actualizado con gemas:', updatedUser.total_gems);
+          console.log('✅ [AUTH] first_login:', updatedUser.first_login);
+          setUser(updatedUser);
+          localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+        } else {
+          console.log('❌ [AUTH] Estructura de datos incorrecta');
+        }
+      } else {
+        console.error('❌ [AUTH] Error al refrescar:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error("❌ [AUTH] Error refreshing user profile:", error);
+    }
+  };
+
   useEffect(() => {
+    console.log('🚀 [AUTH] useEffect ejecutándose...');
     // Check for existing session
     const savedUser = localStorage.getItem("auth_user")
+    console.log('🚀 [AUTH] savedUser en localStorage:', savedUser ? 'Sí' : 'No');
+    
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser))
+        const parsedUser = JSON.parse(savedUser);
+        console.log('🚀 [AUTH] Usuario parseado:', parsedUser.email, 'Gemas:', parsedUser.total_gems);
+        setUser(parsedUser);
+        
+        // 🔄 REFRESCAR DATOS DEL SERVIDOR al cargar
+        if (parsedUser.id) {
+          console.log('🔄 [AUTH] Llamando a refreshUserProfile...');
+          refreshUserProfile(parsedUser.id);
+        }
       } catch (error) {
-        console.error("Error parsing saved user:", error)
+        console.error("❌ [AUTH] Error parsing saved user:", error)
         localStorage.removeItem("auth_user")
       }
+    } else {
+      console.log('⚠️ [AUTH] No hay usuario guardado');
     }
     setIsLoading(false)
   }, [])
@@ -92,6 +163,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("auth_user")
+    localStorage.removeItem("auth_token") // ✅ ELIMINAR TOKEN
+  }
+
+  const updateUser = (userData: Partial<AuthUser>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData }
+      console.log('[AUTH CONTEXT] Updating user:', updatedUser)
+      setUser(updatedUser)
+      localStorage.setItem("auth_user", JSON.stringify(updatedUser))
+    }
   }
 
   const value: AuthContextType = {
@@ -99,6 +180,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     register,
     logout,
+    updateUser,
     isLoading,
     loading: isLoading,
   }

@@ -8,116 +8,89 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Search, Plus, Mail, Phone, MapPin, Calendar, Award, TrendingUp, UserPlus, Filter } from "lucide-react"
-import { initializeAndGetUserData } from "@/lib/data-utils"
-import type { User } from "@/types"
+import { Users, Search, Plus, Mail, Calendar, Award, TrendingUp, UserPlus, Filter } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+
+interface TeamMember {
+  id: number
+  name: string
+  email: string
+  role: string
+  department: string
+  departmentColor: string
+  profileImage?: string
+  totalGems: number
+  joinDate: string
+  performance: number
+  stats: {
+    totalTasks: number
+    completedTasks: number
+    completionRate: number
+    avgRating: string | null
+    achievements: number
+  }
+  status: string
+}
+
+interface Department {
+  name: string
+  color: string
+  memberCount: number
+}
+
+interface TeamStats {
+  totalMembers: number
+  totalDepartments: number
+  avgGems: number
+  departments: Array<{
+    name: string
+    count: number
+  }>
+}
 
 export default function EquipoPage() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user } = useAuth()
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [stats, setStats] = useState<TeamStats>({ totalMembers: 0, totalDepartments: 0, avgGems: 0, departments: [] })
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
-  }, [])
+    async function fetchTeamData() {
+      if (!user?.id) return
+      
+      try {
+        console.log('💼 [EQUIPO] Cargando datos del equipo...')
+        const response = await fetch(`/api/team?userId=${user.id}&department=${selectedDepartment}&search=${encodeURIComponent(searchTerm)}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          console.log('✅ [EQUIPO] Datos cargados:', data.data.teamMembers.length, 'miembros')
+          setTeamMembers(data.data.teamMembers)
+          setDepartments(data.data.departments)
+          setStats(data.data.stats)
+        } else {
+          console.error('❌ [EQUIPO] Error:', data.error)
+        }
+      } catch (error) {
+        console.error('❌ [EQUIPO] Error al cargar equipo:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchTeamData()
+  }, [user?.id, selectedDepartment, searchTerm])
 
-  const teamMembers = [
-    {
-      id: 1,
-      name: "Ana García",
-      role: "Gerente de Ventas",
-      department: "Ventas",
-      email: "ana.garcia@empresa.com",
-      phone: "+1 234 567 8901",
-      location: "Madrid, España",
-      joinDate: "2023-01-15",
-      performance: 95,
-      status: "active",
-      avatar: "/placeholder.svg?height=40&width=40&text=AG",
-      badges: ["Top Performer", "Team Leader"],
-    },
-    {
-      id: 2,
-      name: "Carlos Rodríguez",
-      role: "Desarrollador Senior",
-      department: "Tecnología",
-      email: "carlos.rodriguez@empresa.com",
-      phone: "+1 234 567 8902",
-      location: "Barcelona, España",
-      joinDate: "2022-08-20",
-      performance: 88,
-      status: "active",
-      avatar: "/placeholder.svg?height=40&width=40&text=CR",
-      badges: ["Innovation Award"],
-    },
-    {
-      id: 3,
-      name: "María López",
-      role: "Especialista en Marketing",
-      department: "Marketing",
-      email: "maria.lopez@empresa.com",
-      phone: "+1 234 567 8903",
-      location: "Valencia, España",
-      joinDate: "2023-03-10",
-      performance: 82,
-      status: "active",
-      avatar: "/placeholder.svg?height=40&width=40&text=ML",
-      badges: ["Creative Excellence"],
-    },
-    {
-      id: 4,
-      name: "David Martín",
-      role: "Analista Financiero",
-      department: "Finanzas",
-      email: "david.martin@empresa.com",
-      phone: "+1 234 567 8904",
-      location: "Sevilla, España",
-      joinDate: "2022-11-05",
-      performance: 90,
-      status: "active",
-      avatar: "/placeholder.svg?height=40&width=40&text=DM",
-      badges: ["Accuracy Award"],
-    },
-    {
-      id: 5,
-      name: "Laura Sánchez",
-      role: "Coordinadora RRHH",
-      department: "RRHH",
-      email: "laura.sanchez@empresa.com",
-      phone: "+1 234 567 8905",
-      location: "Bilbao, España",
-      joinDate: "2023-06-01",
-      performance: 87,
-      status: "vacation",
-      avatar: "/placeholder.svg?height=40&width=40&text=LS",
-      badges: ["People Champion"],
-    },
-    {
-      id: 6,
-      name: "Roberto Jiménez",
-      role: "Diseñador UX/UI",
-      department: "Diseño",
-      email: "roberto.jimenez@empresa.com",
-      phone: "+1 234 567 8906",
-      location: "Málaga, España",
-      joinDate: "2023-02-14",
-      performance: 85,
-      status: "active",
-      avatar: "/placeholder.svg?height=40&width=40&text=RJ",
-      badges: ["Design Excellence"],
-    },
-  ]
-
-  const departments = [
-    { key: "all", label: "Todos", count: teamMembers.length },
-    { key: "Ventas", label: "Ventas", count: teamMembers.filter((m) => m.department === "Ventas").length },
-    { key: "Tecnología", label: "Tecnología", count: teamMembers.filter((m) => m.department === "Tecnología").length },
-    { key: "Marketing", label: "Marketing", count: teamMembers.filter((m) => m.department === "Marketing").length },
-    { key: "Finanzas", label: "Finanzas", count: teamMembers.filter((m) => m.department === "Finanzas").length },
-    { key: "RRHH", label: "RRHH", count: teamMembers.filter((m) => m.department === "RRHH").length },
-    { key: "Diseño", label: "Diseño", count: teamMembers.filter((m) => m.department === "Diseño").length },
-  ]
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -128,16 +101,25 @@ export default function EquipoPage() {
       case "inactive":
         return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Inactivo</Badge>
       default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Desconocido</Badge>
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Activo</Badge>
     }
   }
 
   const getPerformanceColor = (performance: number) => {
     if (performance >= 90) return "text-green-600"
-    if (performance >= 80) return "text-blue-600"
-    if (performance >= 70) return "text-yellow-600"
+    if (performance >= 75) return "text-yellow-600"
+    if (performance >= 60) return "text-orange-600"
     return "text-red-600"
   }
+
+  const departmentOptions = [
+    { key: "all", label: "Todos", count: teamMembers.length },
+    ...stats.departments.map(dept => ({
+      key: dept.name,
+      label: dept.name,
+      count: dept.count
+    }))
+  ]
 
   const filteredMembers = teamMembers.filter((member) => {
     const matchesSearch =
@@ -183,7 +165,7 @@ export default function EquipoPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{teamMembers.length}</div>
+              <div className="text-3xl font-bold text-gray-900">{stats.totalMembers}</div>
               <p className="text-sm text-gray-600">Personas en el equipo</p>
             </CardContent>
           </Card>
@@ -197,7 +179,7 @@ export default function EquipoPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">
-                {Math.round(teamMembers.reduce((acc, member) => acc + member.performance, 0) / teamMembers.length)}%
+                {teamMembers.length > 0 ? Math.round(teamMembers.reduce((acc, member) => acc + member.performance, 0) / teamMembers.length) : 0}%
               </div>
               <p className="text-sm text-gray-600">Evaluación general</p>
             </CardContent>
@@ -211,7 +193,7 @@ export default function EquipoPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{departments.length - 1}</div>
+              <div className="text-3xl font-bold text-gray-900">{stats.totalDepartments}</div>
               <p className="text-sm text-gray-600">Áreas de trabajo</p>
             </CardContent>
           </Card>
@@ -220,12 +202,12 @@ export default function EquipoPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <UserPlus className="h-4 w-4 text-brand-red" />
-                Nuevos Este Mes
+                Gemas Promedio
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">2</div>
-              <p className="text-sm text-gray-600">Incorporaciones recientes</p>
+              <div className="text-3xl font-bold text-gray-900">{stats.avgGems}</div>
+              <p className="text-sm text-gray-600">Por empleado</p>
             </CardContent>
           </Card>
         </div>
@@ -251,10 +233,6 @@ export default function EquipoPage() {
                   <Filter className="h-4 w-4 mr-2" />
                   Filtros
                 </Button>
-                <Button className="bg-brand-red hover:bg-red-600 text-white rounded-xl">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Miembro
-                </Button>
               </div>
             </div>
           </CardContent>
@@ -263,18 +241,18 @@ export default function EquipoPage() {
         {/* Department Tabs */}
         <Tabs value={selectedDepartment} onValueChange={setSelectedDepartment}>
           <TabsList className="grid grid-cols-4 lg:grid-cols-7 bg-white rounded-2xl p-2 shadow-lg border-0 w-full">
-            {departments.map((dept) => (
+            {departmentOptions.map((dept) => (
               <TabsTrigger
                 key={dept.key}
                 value={dept.key}
-                className="rounded-xl data-[state=active]:bg-brand-red data-[state=active]:text-white text-sm"
+                className="rounded-xl text-sm font-medium data-[state=active]:bg-brand-red data-[state=active]:text-white"
               >
                 {dept.label} ({dept.count})
               </TabsTrigger>
             ))}
           </TabsList>
 
-          <TabsContent value={selectedDepartment} className="space-y-6">
+          <TabsContent value={selectedDepartment} className="space-y-6">`
             {/* Team Members Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredMembers.map((member, index) => (
@@ -289,7 +267,7 @@ export default function EquipoPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12">
-                            <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
+                            <AvatarImage src={member.profileImage || "/placeholder.svg"} alt={member.name} />
                             <AvatarFallback className="bg-brand-red text-white font-semibold">
                               {member.name
                                 .split(" ")
@@ -315,16 +293,12 @@ export default function EquipoPage() {
                           <span className="truncate">{member.email}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone className="h-4 w-4" />
-                          <span>{member.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="h-4 w-4" />
-                          <span>{member.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Calendar className="h-4 w-4" />
                           <span>Desde {new Date(member.joinDate).toLocaleDateString("es-ES")}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Award className="h-4 w-4" />
+                          <span>{member.totalGems} gemas totales</span>
                         </div>
                       </div>
 
@@ -343,22 +317,16 @@ export default function EquipoPage() {
                         </div>
                       </div>
 
-                      {member.badges.length > 0 && (
-                        <div className="space-y-2">
-                          <span className="text-sm text-gray-600">Reconocimientos</span>
-                          <div className="flex flex-wrap gap-1">
-                            {member.badges.map((badge, badgeIndex) => (
-                              <Badge
-                                key={badgeIndex}
-                                className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs"
-                              >
-                                <Award className="h-3 w-3 mr-1" />
-                                {badge}
-                              </Badge>
-                            ))}
-                          </div>
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-brand-red">{member.stats.completedTasks}</div>
+                          <div className="text-xs text-gray-600">Tareas completadas</div>
                         </div>
-                      )}
+                        <div>
+                          <div className="text-2xl font-bold text-brand-red">{member.stats.achievements}</div>
+                          <div className="text-xs text-gray-600">Logros obtenidos</div>
+                        </div>
+                      </div>
 
                       <div className="flex gap-2 pt-2">
                         <Button

@@ -236,30 +236,38 @@ export default function AIAnalysisComponent() {
         </CardHeader>
         <CardContent className="space-y-4">
           {analysis.recommendations && Array.isArray(analysis.recommendations) ? 
-            analysis.recommendations.map((rec, index) => (
-              <div key={index} className={`p-4 rounded-lg border-2 ${getPriorityColor(rec?.priority || 'medium')}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant={rec?.priority === 'high' ? 'destructive' : rec?.priority === 'medium' ? 'default' : 'secondary'}>
-                        {rec?.priority === 'high' ? 'Alta Prioridad' : rec?.priority === 'medium' ? 'Media Prioridad' : 'Baja Prioridad'}
-                      </Badge>
+            analysis.recommendations
+              .filter((rec) => {
+                // Si existe una recomendación de plan estratégico IA, ocultar la de KPIs
+                const hasStrategicPlan = analysis.recommendations.some(r => r.title?.toLowerCase().includes('plan estratégico'))
+                if (hasStrategicPlan && rec.title?.toLowerCase().includes('kpi')) return false
+                if (hasStrategicPlan && rec.title?.toLowerCase().includes('métrica')) return false
+                return true
+              })
+              .map((rec, index) => (
+                <div key={index} className={`p-4 rounded-lg border-2 ${getPriorityColor(rec?.priority || 'medium')}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant={rec?.priority === 'high' ? 'destructive' : rec?.priority === 'medium' ? 'default' : 'secondary'}>
+                          {rec?.priority === 'high' ? 'Alta Prioridad' : rec?.priority === 'medium' ? 'Media Prioridad' : 'Baja Prioridad'}
+                        </Badge>
+                      </div>
+                      <h4 className="font-semibold">{rec?.title || 'Recomendación'}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{rec?.description || 'Descripción no disponible'}</p>
                     </div>
-                    <h4 className="font-semibold">{rec?.title || 'Recomendación'}</h4>
-                    <p className="text-sm text-gray-600 mt-1">{rec?.description || 'Descripción no disponible'}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(rec?.route || '/dashboard')}
+                      className="ml-4"
+                    >
+                      {rec?.action || 'Ver más'}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => router.push(rec?.route || '/dashboard')}
-                    className="ml-4"
-                  >
-                    {rec?.action || 'Ver más'}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
                 </div>
-              </div>
-            )) : (
+              )) : (
               <div className="text-center text-gray-500 py-8">
                 <Lightbulb className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                 <p>No hay recomendaciones disponibles en este momento.</p>

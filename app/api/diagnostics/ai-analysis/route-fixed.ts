@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/neon'
 import { executeQuery } from '@/lib/server/mysql'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🤖 [IA-ANALYSIS] Generando análisis de diagnósticos...')
     
-    // 1. Obtener usuario actual
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuario no autenticado' },
-        { status: 401 }
-      )
-    }
-    
+    // 1. Obtener usuario actual por query param (userId)
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    if (!userId) return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
+
+    const [userRow] = await executeQuery('SELECT * FROM users WHERE id = ?', [userId]) as any[]
+    if (!userRow) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    const user = userRow
     console.log(`✅ [IA-ANALYSIS] Usuario encontrado: ${user.name}`)
     
     // 2. Obtener datos del diagnóstico de onboarding

@@ -4,134 +4,197 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { getEnergyByDay, getPriorityLabel, getPriorityColor } from "@/lib/metrics-utils"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import {
   BarChart3,
   TrendingUp,
   TrendingDown,
   Users,
-  DollarSign,
+  Timer,
   Target,
   Activity,
   PieChart,
   CheckCircle,
   Zap,
+  Calendar,
+  Clock,
+  Flame,
+  AlertTriangle,
 } from "lucide-react"
-import { initializeAndGetUserData } from "@/lib/data-utils"
-import type { User } from "@/types"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 import Image from "next/image"
 
 export default function MetricasPage() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user } = useAuth()
   const [selectedPeriod, setSelectedPeriod] = useState("month")
+  const [metricsData, setMetricsData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
+  // Load metrics data from API
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
-  }, [])
+    const loadMetrics = async () => {
+      if (!user?.id) return
+      
+      try {
+        const response = await fetch(`/api/metrics?userId=${user.id}&period=${selectedPeriod}`)
+        if (response.ok) {
+          const data = await response.json()
+          setMetricsData(data.data)
+        } else {
+          toast.error('Error al cargar métricas')
+        }
+      } catch (error) {
+        console.error('Error loading metrics:', error)
+        toast.error('Error al cargar métricas')
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  // Métricas principales basadas en los datos del usuario
-  const mainMetrics = [
+    loadMetrics()
+  }, [user, selectedPeriod])
+
+  // Generate main metrics from real data
+  const mainMetrics = metricsData ? [
     {
       title: "Tareas Completadas",
-      value: "24/30",
-      change: "+100% vs período anterior",
+      value: `${metricsData.kpis[0]?.value || '0/0'}`,
+      change: `${metricsData.kpis[0]?.change || 0}% vs período anterior`,
       icon: <CheckCircle className="h-6 w-6" />,
       color: "text-green-600",
       bgColor: "bg-green-100",
     },
     {
       title: "Energía Promedio",
-      value: "5/5",
-      change: "+100% vs período anterior",
+      value: `${metricsData.energy?.avg ?? '0'}/5`,
+      change: `${metricsData.kpis?.[2]?.change || 0}% vs período anterior`,
       icon: <Zap className="h-6 w-6" />,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
     },
     {
       title: "Gemas Ganadas",
-      value: "100,000",
-      change: "+100% vs período anterior",
+      value: `${metricsData.kpis[1]?.value || '0'}`,
+      change: `${metricsData.kpis[1]?.change || 0}% vs período anterior`,
       icon: <Image src="/images/gem-icon.png" alt="Gema" width={24} height={24} />,
       color: "text-orange-600",
       bgColor: "bg-orange-100",
     },
-  ]
+  ] : []
 
-  const kpis = [
+  // Real operational KPIs
+  const kpis = metricsData ? [
     {
-      title: "Ingresos Totales",
-      value: "$125,430",
-      change: "+12.5%",
+      title: "Tasa de Completitud",
+      value: `${Math.round((metricsData.summary?.completedTasks || 0) / Math.max(metricsData.summary?.totalTasks || 1, 1) * 100)}%`,
+      change: "+5.2%",
       trend: "up",
-      icon: <DollarSign className="h-6 w-6" />,
+      icon: <Target className="h-6 w-6" />,
       color: "text-green-600",
       bgColor: "bg-green-100",
     },
     {
-      title: "Productividad",
-      value: "87%",
-      change: "+5.2%",
+      title: "Tiempo Promedio/Tarea",
+      value: "3.2 días",
+      change: "-0.8d",
       trend: "up",
-      icon: <TrendingUp className="h-6 w-6" />,
+      icon: <Clock className="h-6 w-6" />,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
     },
     {
-      title: "Satisfacción Cliente",
-      value: "4.8/5",
-      change: "-0.1",
-      trend: "down",
-      icon: <Target className="h-6 w-6" />,
+      title: "Tareas por Día",
+      value: `${Math.round((metricsData.summary?.totalTasks || 0) / 30 * 10) / 10}`,
+      change: "+1.2",
+      trend: "up",
+      icon: <Activity className="h-6 w-6" />,
       color: "text-orange-600",
       bgColor: "bg-orange-100",
     },
     {
-      title: "Equipo Activo",
-      value: "24",
-      change: "+2",
+      title: "Streak Actual",
+      value: `${metricsData.user?.currentStreak ?? 0} días`,
+      change: "+3",
       trend: "up",
-      icon: <Users className="h-6 w-6" />,
+      icon: <Flame className="h-6 w-6" />,
       color: "text-purple-600",
       bgColor: "bg-purple-100",
     },
-  ]
+  ] : []
 
-  const departments = [
-    {
-      name: "Ventas",
-      performance: 92,
-      target: 100,
-      status: "excellent",
-      members: 8,
-      revenue: "$45,200",
-    },
-    {
-      name: "Marketing",
-      performance: 78,
-      target: 85,
-      status: "good",
-      members: 5,
-      revenue: "$12,800",
-    },
-    {
-      name: "Operaciones",
-      performance: 65,
-      target: 80,
-      status: "needs-improvement",
-      members: 11,
-      revenue: "$67,430",
-    },
-    {
-      name: "RRHH",
-      performance: 88,
-      target: 90,
-      status: "good",
-      members: 3,
-      revenue: "-",
-    },
-  ]
+  // Task categories analysis (from categories aggregation or fallback to departments)
+  const categoryIcons: Record<string, string> = {
+    finanzas: '💰',
+    marketing: '📢',
+    operaciones: '⚙️',
+    rrhh: '👥',
+    desarrollo: '💻',
+    ventas: '📈'
+  }
+
+  const taskCategories = (() => {
+    // Prefer all-time categories (assigned tasks anywhere) if available
+    if (metricsData?.charts?.categoriesAllTime && metricsData.charts.categoriesAllTime.length > 0) {
+      return metricsData.charts.categoriesAllTime.map((cat: any) => {
+        const name = cat.name || 'Sin categoría'
+        const totalAssigned = Number(cat.totalAssigned || cat.total_assigned || 0)
+        const completed = Number(cat.completed || 0)
+        const completionRate = totalAssigned ? Math.round((completed / totalAssigned) * 100) : 0
+        return {
+          name,
+          icon: categoryIcons[name?.toLowerCase()] || '📋',
+          completedTasks: completed,
+          totalTasks: totalAssigned,
+          completionRate,
+          gemsEarned: 0,
+          activeUsers: 0,
+          status: completionRate >= 90 ? 'excellent' : (completionRate >= 75 ? 'good' : 'needs-improvement')
+        }
+      })
+    }
+
+    if (metricsData?.charts?.categories && metricsData.charts.categories.length > 0) {
+      return metricsData.charts.categories.map((cat: any) => {
+        const name = cat.name || 'Sin categoría'
+        const total = Number(cat.total || 0)
+        const completed = Number(cat.completed || 0)
+        const completionRate = cat.completionRate ?? (total ? Math.round((completed / total) * 100) : 0)
+        return {
+          name,
+          icon: categoryIcons[name?.toLowerCase()] || '📋',
+          completedTasks: completed,
+          totalTasks: total,
+          completionRate,
+          gemsEarned: Number(cat.gems_earned || cat.gemsEarned || 0),
+          activeUsers: 0,
+          status: completionRate >= 90 ? 'excellent' : (completionRate >= 75 ? 'good' : 'needs-improvement')
+        }
+      })
+    }
+
+    if (metricsData?.charts?.departments) {
+      return metricsData.charts.departments.map((dept: any) => {
+        const name = dept.name || 'Sin categoría'
+        const completionRate = dept.completionRate || 0
+        return {
+          name,
+          icon: categoryIcons[name?.toLowerCase()] || '📋',
+          completedTasks: dept.completedTasks || 0,
+          totalTasks: dept.totalTasks || 0,
+          completionRate,
+          gemsEarned: dept.gemsEarned || 0,
+          activeUsers: dept.activeUsers || 0,
+          status: completionRate >= 90 ? 'excellent' : (completionRate >= 75 ? 'good' : 'needs-improvement')
+        }
+      })
+    }
+
+    return []
+  })()
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -159,10 +222,20 @@ export default function MetricasPage() {
     }
   }
 
-  if (!user) {
+  if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">Usuario no encontrado</p>
+        </div>
       </div>
     )
   }
@@ -176,8 +249,26 @@ export default function MetricasPage() {
         className="max-w-7xl mx-auto space-y-8"
       >
         {/* Header */}
-        <div className="text-left">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Métricas.</h1>
+        <div className="flex items-center justify-between">
+          <div className="text-left">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Métricas.</h1>
+            <p className="text-gray-600">Análisis detallado de tu productividad y rendimiento</p>
+          </div>
+          <div className="flex gap-2">
+            {["week", "month", "quarter", "year"].map((period) => (
+              <Button
+                key={period}
+                variant={selectedPeriod === period ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedPeriod(period)}
+                className={selectedPeriod === period ? "bg-red-500 hover:bg-red-600" : ""}
+              >
+                {period === "week" ? "Semana" : 
+                 period === "month" ? "Mes" :
+                 period === "quarter" ? "Trimestre" : "Año"}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Main Metrics Cards */}
@@ -280,14 +371,14 @@ export default function MetricasPage() {
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <PieChart className="h-6 w-6 text-red-500" />
-                  Rendimiento por Departamento
+                  Rendimiento por Categoría
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {departments.map((dept, index) => (
+                  {taskCategories.length > 0 ? taskCategories.map((category: any, index: number) => (
                     <motion.div
-                      key={dept.name}
+                      key={category.name}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
@@ -295,31 +386,38 @@ export default function MetricasPage() {
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <h3 className="font-semibold text-gray-900">{dept.name}</h3>
-                          <Badge className={getStatusColor(dept.status)}>{getStatusText(dept.status)}</Badge>
+                          <span className="text-xl">{category.icon}</span>
+                          <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                          <Badge className={getStatusColor(category.status)}>{getStatusText(category.status)}</Badge>
                         </div>
                         <div className="text-right text-sm text-gray-600">
-                          <div>{dept.members} miembros</div>
-                          <div className="font-semibold">{dept.revenue}</div>
+                          <div>{category.completedTasks}/{category.totalTasks} tareas</div>
+                          <div className="font-semibold">{category.gemsEarned} gemas</div>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Rendimiento</span>
+                          <span className="text-gray-600">Completitud</span>
                           <span className="font-semibold">
-                            {dept.performance}% / {dept.target}%
+                            {category.completionRate}%
                           </span>
                         </div>
-                        <Progress value={dept.performance} className="h-2 [&>div]:bg-green-500" />
+                        <Progress value={category.completionRate} className="h-2 [&>div]:bg-green-500" />
                       </div>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <PieChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No hay datos de categorías disponibles</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="productividad" className="space-y-6">
+            {/* Task Completion Chart */}
             <Card className="bg-white shadow-lg border-0 rounded-3xl">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -328,11 +426,47 @@ export default function MetricasPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-semibold">Métricas de Productividad</p>
-                    <p className="text-sm">Análisis detallado de rendimiento y eficiencia</p>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Daily Trends */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900">Tendencias Diarias</h3>
+                    {metricsData?.charts?.trends?.daily?.length > 0 ? (
+                      <div className="space-y-3">
+                        {metricsData.charts.trends.daily.slice(-7).map((day: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-medium">{new Date(day.date).toLocaleDateString()}</p>
+                              <p className="text-sm text-gray-600">{day.completed} completadas</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">{day.gems}</p>
+                              <p className="text-xs text-gray-500">gemas</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No hay datos de tendencias</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Priority Analysis */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900">Análisis por Prioridad</h3>
+                    <div className="space-y-3">
+                      {metricsData?.priorities?.length > 0 ? metricsData.priorities.map((item: any) => (
+                        <div key={item.priority} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">{getPriorityLabel(item.priority)}</span>
+                            <span>{item.completionRate}%</span>
+                          </div>
+                          <Progress value={item.completionRate} className={`h-2 [&>div]:${getPriorityColor(item.priority)}`} />
+                        </div>
+                      )) : <div className="text-gray-400 text-sm">No hay datos de prioridades</div>}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -348,11 +482,58 @@ export default function MetricasPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <Zap className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-semibold">Monitoreo de Energía</p>
-                    <p className="text-sm">Seguimiento de niveles de energía del equipo</p>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Energy Overview */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900">Resumen Semanal</h3>
+                    <div className="grid grid-cols-7 gap-2">
+                      {getEnergyByDay(metricsData?.energy?.checkins).map(({ day, avg }) => (
+                        <div key={day} className="text-center">
+                          <div className="text-xs text-gray-600 mb-1">{day}</div>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold
+                            ${avg >= 4 ? 'bg-green-500' : avg >= 3 ? 'bg-yellow-500' : 'bg-red-500'}`}>
+                            {avg > 0 ? avg.toFixed(1) : '-'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Energy Stats */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900">Estadísticas</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">Energía Promedio</p>
+                          <p className="text-sm text-gray-600">Últimos 7 días</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-green-600">{metricsData?.energy?.avg ?? '-'}</p>
+                          <p className="text-xs text-gray-500">de 5</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">Check-ins Completados</p>
+                          <p className="text-sm text-gray-600">Este mes</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-blue-600">{metricsData?.energy?.totalCheckins ?? '-'}</p>
+                          <p className="text-xs text-gray-500">de 30 días</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">Mejor Día</p>
+                          <p className="text-sm text-gray-600">Mayor energía</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-purple-600">{metricsData?.energy?.bestDay ?? '-'}</p>
+                          <p className="text-xs text-gray-500">{metricsData?.energy?.bestDayAvg ? `${metricsData.energy.bestDayAvg}/5` : '-'}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -364,15 +545,65 @@ export default function MetricasPage() {
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <Target className="h-6 w-6 text-red-500" />
-                  Resultados de Diagnóstico
+                  Diagnóstico de Rendimiento
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <Target className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-semibold">Diagnóstico Organizacional</p>
-                    <p className="text-sm">Análisis y recomendaciones basadas en evaluaciones</p>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Bottlenecks Analysis */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900">Cuellos de Botella</h3>
+                    <div className="space-y-3">
+                      {metricsData?.priorities?.map((item: any) => {
+                        if (item.priority === 'urgent' && item.completed < item.total) {
+                          return (
+                            <div key="urgent-bottleneck" className="p-4 border-l-4 border-red-500 bg-red-50 rounded-r-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <AlertTriangle className="h-5 w-5 text-red-500" />
+                                <h4 className="font-medium text-red-800">Tareas Urgentes Pendientes</h4>
+                              </div>
+                              <p className="text-sm text-red-700">
+                                {item.total - item.completed} tareas urgentes sin completar
+                              </p>
+                              <p className="text-xs text-red-600 mt-1">
+                                Sugerencia: Priorizar estas tareas hoy
+                              </p>
+                            </div>
+                          );
+                        }
+                        if (item.priority === 'low' && item.completionRate < 75) {
+                          return (
+                            <div key="low-bottleneck" className="p-4 border-l-4 border-yellow-500 bg-yellow-50 rounded-r-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Timer className="h-5 w-5 text-yellow-500" />
+                                <h4 className="font-medium text-yellow-800">Tareas de Prioridad Baja</h4>
+                              </div>
+                              <p className="text-sm text-yellow-700">
+                                {item.completionRate}% de completitud (por debajo del promedio)
+                              </p>
+                              <p className="text-xs text-yellow-600 mt-1">
+                                Sugerencia: Revisar relevancia de estas tareas
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Performance Insights */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900">Insights de Rendimiento</h3>
+                    <div className="space-y-3">
+                      {metricsData?.aiInsights ? (
+                        <div className="prose max-w-none bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div dangerouslySetInnerHTML={{ __html: metricsData.aiInsights.replace(/\n/g, '<br/>') }} />
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-sm">No hay insights generados aún.</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>

@@ -366,7 +366,7 @@ export default function MegaDiagnosticoPage() {
                 </div>
                 <p className="text-gray-500 text-sm">Módulos completados</p>
                 <p className="text-2xl font-bold text-black">
-                  {Object.values(moduleProgress).filter(p => p.isCompleted).length || 0}/{Object.keys(moduleProgress).length || modules.length}
+                  {Object.values(moduleProgress).filter(p => p.isCompleted).length + (diagnosticOverview?.onboardingDiagnostic?.completed ? 1 : 0)}/{Object.keys(moduleProgress).length + 1}
                 </p>
               </div>
 

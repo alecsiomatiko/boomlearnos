@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -149,18 +149,13 @@ const DIFFICULTIES = [
   },
 ]
 
-const TEAM_MEMBERS = [
-  "Juan Pablo Martínez",
-  "María García López",
-  "Carlos Rodríguez",
-  "Ana Fernández",
-  "Roberto Silva",
-  "Laura Martín",
-  "Diego Herrera",
-  "Carmen Ruiz",
-]
+
+
+
+import { useAuth } from "@/contexts/auth-context"
 
 export function NewTaskForm({ onSubmit, onCancel }: NewTaskFormProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -169,8 +164,29 @@ export function NewTaskForm({ onSubmit, onCancel }: NewTaskFormProps) {
     difficulty: "",
     assignedTo: "",
     estimatedHours: 2,
-  })
-  const [selectedDate, setSelectedDate] = useState<Date>()
+  });
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (!user?.id) return;
+      setLoadingMembers(true);
+      try {
+        const res = await fetch(`/api/team?userId=${user.id}`);
+        const data = await res.json();
+        if (data.success && data.data?.teamMembers) {
+          setTeamMembers(data.data.teamMembers);
+        }
+      } catch (e) {
+        setTeamMembers([]);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+    fetchTeamMembers();
+  }, [user?.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -419,17 +435,23 @@ export function NewTaskForm({ onSubmit, onCancel }: NewTaskFormProps) {
                   onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}
                 >
                   <SelectTrigger className="rounded-xl border-gray-200 h-12">
-                    <SelectValue placeholder="Seleccionar miembro" />
+                    <SelectValue placeholder={loadingMembers ? "Cargando miembros..." : "Seleccionar miembro"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {TEAM_MEMBERS.map((member) => (
-                      <SelectItem key={member} value={member}>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-500" />
-                          {member}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {loadingMembers ? (
+                      <div className="p-4 text-center text-gray-400">Cargando...</div>
+                    ) : teamMembers.length === 0 ? (
+                      <div className="p-4 text-center text-gray-400">No hay miembros disponibles</div>
+                    ) : (
+                      teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-500" />
+                            {member.name}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

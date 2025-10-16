@@ -35,15 +35,15 @@ export function ConfettiExplosion({ trigger, onComplete }: ConfettiExplosionProp
     if (trigger && !isActive) {
       setIsActive(true)
 
-      // Generate confetti pieces
-      const pieces: ConfettiPiece[] = Array.from({ length: 50 }, (_, i) => ({
+      // Generate confetti pieces - MÁS PARTÍCULAS Y MÁS GRANDES
+      const pieces: ConfettiPiece[] = Array.from({ length: 100 }, (_, i) => ({
         id: i,
         x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
+        y: -50, // Empezar desde arriba
         rotation: Math.random() * 360,
         color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        size: Math.random() * 8 + 4,
-        delay: Math.random() * 0.5,
+        size: Math.random() * 20 + 10, // Tamaño entre 10-30px (antes 4-12px)
+        delay: Math.random() * 0.3,
       }))
 
       setConfetti(pieces)
@@ -53,7 +53,7 @@ export function ConfettiExplosion({ trigger, onComplete }: ConfettiExplosionProp
         setConfetti([])
         setIsActive(false)
         onComplete()
-      }, 3000)
+      }, 4000) // 4 segundos (antes 3)
 
       return () => clearTimeout(timer)
     }
@@ -62,7 +62,7 @@ export function ConfettiExplosion({ trigger, onComplete }: ConfettiExplosionProp
   return (
     <AnimatePresence>
       {isActive && (
-        <div className="fixed inset-0 pointer-events-none z-40">
+        <div className="fixed inset-0 pointer-events-none z-50">
           {confetti.map((piece) => (
             <motion.div
               key={piece.id}
@@ -74,22 +74,23 @@ export function ConfettiExplosion({ trigger, onComplete }: ConfettiExplosionProp
                 opacity: 1,
               }}
               animate={{
-                y: piece.y + window.innerHeight,
-                rotate: piece.rotation + 720,
+                y: window.innerHeight + 100,
+                x: piece.x + (Math.random() - 0.5) * 200, // Movimiento horizontal
+                rotate: piece.rotation + 1080, // Más rotación (3 vueltas)
                 scale: 1,
                 opacity: 0,
               }}
               transition={{
-                duration: 3,
+                duration: 4, // Más lento
                 delay: piece.delay,
                 ease: "easeOut",
               }}
-              className="absolute"
+              className="absolute shadow-lg"
               style={{
                 backgroundColor: piece.color,
                 width: piece.size,
                 height: piece.size,
-                borderRadius: "2px",
+                borderRadius: "4px", // Más redondeado
               }}
             />
           ))}

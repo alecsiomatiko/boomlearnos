@@ -7,142 +7,81 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Star, Award, Target, Crown, Medal, Flame, Users } from "lucide-react"
 import { IntegratedBadge } from "@/components/badges/integrated-badge"
-import { initializeAndGetUserData, getTasks } from "@/lib/data-utils"
-import type { User, Task } from "@/types"
+import { useAuth } from "@/contexts/auth-context"
+import { authFetch } from "@/lib/auth-utils"
 import Image from "next/image"
 
-// Mock data para logros
-const achievements = [
-  {
-    id: "first_task",
-    name: "Primera Misión",
-    description: "Completa tu primera tarea",
-    icon: Target,
-    category: "Inicio",
-    points: 50,
-    unlocked: true,
-    unlockedAt: "2024-01-15",
-    rarity: "common",
-    progress: 100,
-    maxProgress: 100,
-  },
-  {
-    id: "task_master_bronze",
-    name: "Maestro de Tareas - Bronce",
-    description: "Completa 10 tareas",
-    icon: Medal,
-    category: "Productividad",
-    points: 100,
-    unlocked: true,
-    unlockedAt: "2024-01-20",
-    rarity: "uncommon",
-    progress: 10,
-    maxProgress: 10,
-  },
-  {
-    id: "task_master_silver",
-    name: "Maestro de Tareas - Plata",
-    description: "Completa 25 tareas",
-    icon: Medal,
-    category: "Productividad",
-    points: 250,
-    unlocked: false,
-    rarity: "rare",
-    progress: 18,
-    maxProgress: 25,
-  },
-  {
-    id: "task_master_gold",
-    name: "Maestro de Tareas - Oro",
-    description: "Completa 50 tareas",
-    icon: Medal,
-    category: "Productividad",
-    points: 500,
-    unlocked: false,
-    rarity: "epic",
-    progress: 18,
-    maxProgress: 50,
-  },
-  {
-    id: "streak_master",
-    name: "Racha Perfecta",
-    description: "Mantén una racha de 7 días completando tareas",
-    icon: Flame,
-    category: "Consistencia",
-    points: 200,
-    unlocked: false,
-    rarity: "rare",
-    progress: 3,
-    maxProgress: 7,
-  },
-  {
-    id: "team_player",
-    name: "Jugador de Equipo",
-    description: "Colabora en 5 proyectos de equipo",
-    icon: Users,
-    category: "Colaboración",
-    points: 150,
-    unlocked: false,
-    rarity: "uncommon",
-    progress: 2,
-    maxProgress: 5,
-  },
-  {
-    id: "productivity_master",
-    name: "Maestro de Productividad",
-    description: "Completa 100 tareas en total",
-    icon: Award,
-    category: "Productividad",
-    points: 1000,
-    unlocked: false,
-    rarity: "legendary",
-    progress: 18,
-    maxProgress: 100,
-  },
-  {
-    id: "early_bird",
-    name: "Madrugador",
-    description: "Completa 10 tareas antes de las 9 AM",
-    icon: Star,
-    category: "Hábitos",
-    points: 300,
-    unlocked: false,
-    rarity: "rare",
-    progress: 2,
-    maxProgress: 10,
-  },
-  {
-    id: "empire_builder",
-    name: "Constructor de Imperio",
-    description: "Alcanza el nivel Empire Master",
-    icon: Crown,
-    category: "Progresión",
-    points: 2000,
-    unlocked: false,
-    rarity: "legendary",
-    progress: 0,
-    maxProgress: 1,
-  },
-]
+interface Achievement {
+  id: string
+  name: string
+  description: string
+  category: string
+  points: number
+  rarity: string
+  icon: string
+  progress: number
+  maxProgress: number
+  completed: boolean
+  unlockedAt?: string
+}
+
+interface AchievementStats {
+  completedAchievements: number
+  totalAchievements: number
+  totalPoints: number
+}
+
+const iconMap = {
+  Target,
+  Medal, 
+  Award,
+  Star,
+  Crown,
+  Flame,
+  Users
+}
 
 export default function LogrosPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [tasks, setTasks] = useState<Task[]>([])
+  const { user } = useAuth()
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [stats, setStats] = useState<AchievementStats | null>(null)
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
-    const userTasks = getTasks()
-    setTasks(userTasks)
-  }, [])
+    async function fetchAchievements() {
+      if (!user?.id) return
+      
+      try {
+        console.log('🏆 [LOGROS] Cargando logros del usuario:', user.id)
+        const response = await authFetch(`/api/achievements?userId=${user.id}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          console.log('✅ [LOGROS] Logros cargados:', data.data.achievements.length)
+          setAchievements(data.data.achievements)
+          setStats(data.data.stats)
+        } else {
+          console.error('❌ [LOGROS] Error:', data.error)
+        }
+      } catch (error) {
+        console.error('❌ [LOGROS] Error al cargar logros:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchAchievements()
+  }, [user?.id])
 
-  const completedTasksCount = tasks.filter((task) => task.status === "completed").length
-  const totalPoints = user?.points || 0
-  const totalGems = 120000
-  const unlockedAchievements = achievements.filter((a) => a.unlocked).length
-  const totalAchievements = 20
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
 
   const handleBadgeClick = (badgeId: string) => {
     setSelectedBadge(badgeId)
@@ -189,9 +128,9 @@ export default function LogrosPage() {
                     <Image src="/images/gem-icon.png" alt="Gem Icon" width={64} height={64} className="w-16 h-16" />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold">Gemas: {totalGems.toLocaleString()}</h2>
+                    <h2 className="text-3xl font-bold">Gemas: {user?.total_gems?.toLocaleString() || 0}</h2>
                     <p className="text-xl opacity-90">
-                      Desbloqueados: {unlockedAchievements}/{totalAchievements}
+                      Desbloqueados: {stats?.completedAchievements || 0}/{stats?.totalAchievements || 0}
                     </p>
                   </div>
                 </div>
@@ -212,34 +151,61 @@ export default function LogrosPage() {
           {achievements.map((achievement, index) => (
             <Card
               key={achievement.id}
-              className="bg-white border-0 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              className={`bg-white border-0 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${
+                achievement.completed ? 'ring-2 ring-green-400' : ''
+              }`}
               onClick={() => handleBadgeClick(achievement.id)}
             >
               <CardContent className="p-6">
                 <div className="space-y-4">
+                  {/* Achievement Status */}
+                  {achievement.completed && (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Award className="w-5 h-5" />
+                      <span className="text-sm font-medium">¡Completado!</span>
+                    </div>
+                  )}
+                  
                   {/* Achievement Title */}
                   <h3 className="text-2xl font-bold text-gray-900">{achievement.name}</h3>
 
                   {/* Description */}
                   <p className="text-gray-500 text-sm">{achievement.description}</p>
 
+                  {/* Progress Info */}
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>Progreso: {achievement.progress}/{achievement.maxProgress}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      achievement.rarity === 'legendary' ? 'bg-purple-100 text-purple-800' :
+                      achievement.rarity === 'epic' ? 'bg-orange-100 text-orange-800' :
+                      achievement.rarity === 'rare' ? 'bg-blue-100 text-blue-800' :
+                      achievement.rarity === 'uncommon' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {achievement.rarity}
+                    </span>
+                  </div>
+
                   {/* Progress Bar */}
                   <div className="space-y-2">
                     <Progress
-                      value={achievement.progress ? (achievement.progress / achievement.maxProgress) * 100 : 75}
+                      value={achievement.maxProgress > 0 ? (achievement.progress / achievement.maxProgress) * 100 : 0}
                       className="h-2 bg-gray-200"
                       style={
                         {
-                          "--progress-background": "#22c55e",
+                          "--progress-background": achievement.completed ? "#22c55e" : "#3b82f6",
                         } as React.CSSProperties
                       }
                     />
                   </div>
 
                   {/* Gems */}
-                  <div className="flex items-center gap-2">
-                    <Image src="/images/gem-icon.png" alt="Gem" width={24} height={24} className="w-6 h-6" />
-                    <span className="text-lg font-semibold text-gray-700">{achievement.points}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Image src="/images/gem-icon.png" alt="Gem" width={24} height={24} className="w-6 h-6" />
+                      <span className="text-lg font-semibold text-gray-700">{achievement.points}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 capitalize">{achievement.category}</span>
                   </div>
                 </div>
               </CardContent>

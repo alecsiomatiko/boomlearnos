@@ -49,6 +49,15 @@ export async function POST(request: Request) {
       console.log('✅ [DIAGNOSTIC] Diagnóstico creado exitosamente');
     }
 
+    // Actualizar el paso del onboarding a 'diagnostic'
+    await executeQuery(`
+      UPDATE users 
+      SET onboarding_step = 'diagnostic'
+      WHERE id = ?
+    `, [userId]);
+    
+    console.log('✅ [DIAGNOSTIC] Paso de onboarding actualizado a diagnostic');
+
     return NextResponse.json({ 
       success: true,
       message: 'Diagnóstico guardado exitosamente'

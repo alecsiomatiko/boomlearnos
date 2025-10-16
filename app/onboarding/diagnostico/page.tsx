@@ -225,31 +225,44 @@ export default function DiagnosticoPage() {
         throw new Error('Error guardando respuestas del diagnóstico')
       }
 
-      // Completar onboarding
-      const onboardingResponse = await fetch('/api/onboarding/complete', {
+      toast({
+        title: "Diagnóstico completado",
+        description: "Generando tu identidad organizacional con IA...",
+      })
+
+      // Generar identidad organizacional con IA
+      const identityResponse = await fetch('/api/dashboard/generate-pending-identity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id
+          userId: user.id  // Enviar userId en lugar de organizationId
         }),
       })
 
-      const result = await onboardingResponse.json()
+      const identityResult = await identityResponse.json()
 
-      if (result.success) {
+      if (identityResult.success) {
         toast({
-          title: "¡Onboarding completado!",
-          description: `¡Felicitaciones! Has ganado ${result.rewards?.gems || 50} gemas y una medalla de bienvenida.`,
+          title: "¡Identidad organizacional creada!",
+          description: "Tu misión, visión y valores han sido generados con IA.",
         })
         
-        // Pequeña pausa para mostrar el mensaje
+        // Continuar al siguiente paso del onboarding
         setTimeout(() => {
-          router.push('/dashboard')
+          router.push('/onboarding/final')
         }, 2000)
       } else {
-        throw new Error(result.error || 'Error completando onboarding')
+        // Si falla la IA, continuar anyway pero mostrar advertencia
+        toast({
+          title: "Diagnóstico guardado",
+          description: "Continuando al siguiente paso...",
+        })
+        
+        setTimeout(() => {
+          router.push('/onboarding/final')
+        }, 2000)
       }
     } catch (error: any) {
       console.error('Error:', error)

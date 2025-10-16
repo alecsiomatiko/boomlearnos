@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -37,85 +37,8 @@ import { RewardAnimation } from "@/components/animations/reward-animation"
 import { IntegratedBadge } from "@/components/badges/integrated-badge"
 import { NewTaskForm } from "@/components/dashboard/new-task-form"
 import { toast } from "sonner"
-
-// Mock data
-const mockUser = {
-  id: "1",
-  name: "Juan Pablo",
-  email: "juan@example.com",
-  phone: "",
-  city: "",
-  business_type: "",
-  role: "user",
-  level: "5",
-  total_gems: 2450,
-  current_streak: 6,
-  longest_streak: 12,
-  energy: 4,
-  badges: ["first-task", "week-warrior", "productivity-master"],
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}
-
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Establecer sistema de control financiero",
-    description: "Implementar controles internos para el seguimiento de gastos e ingresos mensuales",
-    completed: false,
-    gems: 100,
-    dueDate: new Date("2024-01-15"),
-    category: "finanzas",
-    priority: "high",
-    completionPercentage: 85,
-    assignedTo: "Juan Pablo",
-    comments: [
-      { id: "1", author: "María García", text: "Ya revisé los reportes iniciales", timestamp: "2024-01-10" },
-      { id: "2", author: "Carlos López", text: "Necesitamos definir los KPIs", timestamp: "2024-01-11" },
-    ],
-  },
-  {
-    id: "2",
-    title: "Campaña de marketing digital Q1",
-    description: "Desarrollar estrategia de marketing digital para el primer trimestre",
-    completed: false,
-    gems: 75,
-    dueDate: new Date("2024-01-16"),
-    category: "marketing",
-    priority: "medium",
-    completionPercentage: 60,
-    assignedTo: "Ana Martínez",
-    comments: [],
-  },
-  {
-    id: "3",
-    title: "Optimización de procesos operativos",
-    description: "Revisar y mejorar los procesos operativos actuales para aumentar eficiencia",
-    completed: false,
-    gems: 50,
-    dueDate: new Date("2024-01-17"),
-    category: "operaciones",
-    priority: "low",
-    completionPercentage: 30,
-    assignedTo: "Roberto Silva",
-    comments: [],
-  },
-  {
-    id: "4",
-    title: "Evaluación de desempeño trimestral",
-    description: "Realizar evaluaciones de desempeño del equipo para el trimestre",
-    completed: false,
-    gems: 120,
-    dueDate: new Date("2024-01-14"),
-    category: "rrhh",
-    priority: "urgent",
-    completionPercentage: 40,
-    assignedTo: "Laura Rodríguez",
-    comments: [
-      { id: "3", author: "Director RRHH", text: "Priorizar evaluaciones de líderes", timestamp: "2024-01-12" },
-    ],
-  },
-]
+import { useAuth } from "@/contexts/auth-context"
+import { authFetch } from "@/lib/auth-utils"
 
 const getPriorityBadgeVariant = (priority: string): "default" | "secondary" | "destructive" | "outline" => {
   switch (priority) {
@@ -171,8 +94,10 @@ const getCategoryIcon = (category: string) => {
 }
 
 export default function ControlPage() {
+  const { user, updateUser } = useAuth()
   const [showNewTaskForm, setShowNewTaskForm] = useState(false)
-  const [tasks, setTasks] = useState<Task[]>(mockTasks)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
   const [taskCompletions, setTaskCompletions] = useState<Record<string, number>>({})
   const [energyLevel, setEnergyLevel] = useState([3])
@@ -185,6 +110,102 @@ export default function ControlPage() {
   const [unlockedBadgeId, setUnlockedBadgeId] = useState<string | null>(null)
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({})
   const [newComments, setNewComments] = useState<Record<string, string>>({})
+  const [teamMembers, setTeamMembers] = useState<Array<{id: string, name: string, email: string}>>([])
+  const [userGems, setUserGems] = useState<number>(0)
+
+  // Load user data and tasks
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return
+      
+      // Initialize gems from user context
+      setUserGems(user.total_gems || 0);
+      
+      try {
+        // Load tasks
+        const tasksResponse = await authFetch(`/api/tasks?userId=${user.id}`)
+        if (tasksResponse.ok) {
+          const tasksData = await tasksResponse.json()
+          const tasksWithComments = await Promise.all(
+            (tasksData.data?.tasks || []).map(async (task: Task) => {
+              try {
+                const commentsResponse = await authFetch(`/api/tasks/comments?taskId=${task.id}`)
+                if (commentsResponse.ok) {
+                  const commentsData = await commentsResponse.json()
+                  return { ...task, comments: commentsData.data?.comments || [] }
+                }
+                return { ...task, comments: [] }
+              } catch {
+                return { ...task, comments: [] }
+              }
+            })
+          )
+          setTasks(tasksWithComments)
+        }
+        
+        // Check daily check-in status
+        const checkinResponse = await authFetch(`/api/checkin?userId=${user.id}`)
+        if (checkinResponse.ok) {
+          const checkinData = await checkinResponse.json()
+          setHasCheckedIn(checkinData.data?.hasCheckedIn || false)
+        }
+        
+        // Load team members
+        const teamResponse = await authFetch(`/api/team?userId=${user.id}`)
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json()
+          setTeamMembers(teamData.data?.users || [])
+        } else {
+          console.error('Error loading team members:', await teamResponse.text())
+        }
+        
+      } catch (error) {
+        console.error('Error loading data:', error)
+        toast.error('Error al cargar los datos')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [user])
+
+  // Sync userGems when user.total_gems changes
+  useEffect(() => {
+    if (user?.total_gems !== undefined) {
+      console.log('[useEffect] Syncing gems from user context:', user.total_gems);
+      setUserGems(user.total_gems);
+    }
+  }, [user?.total_gems]);
+
+  // Function to refresh user data (gems, level, etc.)
+  const refreshUserData = async () => {
+    if (!user?.id) return
+    
+    try {
+      console.log('[refreshUserData] Fetching updated user data...');
+      const response = await authFetch(`/api/user/profile?userId=${user.id}`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        const userData = result.data;
+        console.log('[refreshUserData] Updated user data:', userData);
+        
+        // Update local gems state
+        if (userData.totalGems !== undefined) {
+          setUserGems(userData.totalGems);
+          console.log('[refreshUserData] Gems updated to:', userData.totalGems);
+
+          // Update auth context with snake_case total_gems
+          updateUser({ total_gems: userData.totalGems });
+        }
+      } else {
+        console.error('[refreshUserData] Failed to fetch user data:', response.status);
+      }
+    } catch (error) {
+      console.error('[refreshUserData] Error:', error);
+    }
+  }
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
 
@@ -233,25 +254,117 @@ export default function ControlPage() {
     setTimeout(() => setShowConfetti(false), 3000)
   }
 
-  const handleTaskCheck = (taskId: string, checked: boolean) => {
-    if (!checked) {
-      setCompletedTasks((prev) => ({ ...prev, [taskId]: false }))
-      return
+  const handleTaskCheck = async (taskId: string, checked: boolean) => {
+    console.log('handleTaskCheck called:', { taskId, checked, userId: user?.id });
+    
+    if (!user?.id) {
+      toast.error('Usuario no autenticado');
+      return;
     }
 
-    if (completedTasks[taskId]) return
+    if (!checked) {
+      // Unchecking is not allowed for completed tasks
+      console.log('Attempted to uncheck task');
+      return;
+    }
 
-    setCompletedTasks((prev) => ({ ...prev, [taskId]: true }))
+    const task = tasks.find((t) => t.id === taskId);
+    console.log('Task found:', task);
+    
+    if (!task) {
+      toast.error('Tarea no encontrada');
+      return;
+    }
 
-    const task = tasks.find((t) => t.id === taskId)
-    if (task && !task.completed) {
-      const updatedTask = {
-        ...task,
-        completed: true,
-        completionPercentage: 100,
+    if (task.completed || completedTasks[taskId]) {
+      console.log('Task already completed');
+      return;
+    }
+
+    // Optimistically update UI
+    setCompletedTasks((prev) => ({ ...prev, [taskId]: true }));
+
+    try {
+      console.log('Sending PUT request to complete task...');
+      const response = await authFetch(`/api/tasks`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: taskId,
+          status: 'completed',
+          completionPercentage: 100
+        })
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (response.ok) {
+        // Update task in local state with server response
+        const updatedTask = {
+          ...data.data,
+          comments: task.comments || []
+        };
+        
+        setTasks(tasks.map((t) => (t.id === taskId ? updatedTask : t)));
+        triggerCelebration(task);
+
+        // Show gems earned notification
+        const gemsEarned = data.gemsEarned || 0;
+        console.log('Gems earned:', gemsEarned);
+        
+        if (gemsEarned > 0) {
+          toast.success(`¡Tarea completada! +${gemsEarned} gemas`, {
+            icon: <Gem className="h-4 w-4 text-yellow-500" />,
+          });
+        } else {
+          toast.success('¡Tarea completada!', {
+            icon: <Trophy className="h-4 w-4 text-green-500" />,
+          });
+        }
+        
+        // If server returned the updated total, update auth context and local state immediately
+        if (data.newTotalGems !== undefined && data.newTotalGems !== null) {
+          console.log('[handleTaskCheck] Server returned newTotalGems:', data.newTotalGems);
+          setUserGems(data.newTotalGems);
+          updateUser({ total_gems: data.newTotalGems });
+        } else {
+          // Fallback to full refresh
+          await refreshUserData();
+        }
+
+        // 🏆 VERIFICAR LOGROS AUTOMÁTICOS
+        try {
+          const achievementsResponse = await authFetch('/api/achievements/check', {
+            method: 'POST'
+          });
+          const achievementsData = await achievementsResponse.json();
+          
+          if (achievementsData.success && achievementsData.data.unlockedCount > 0) {
+            // Mostrar notificación de logro desbloqueado
+            achievementsData.data.unlockedAchievements.forEach((achievement: any) => {
+              toast.success(`🏆 ¡Logro desbloqueado!`, {
+                description: `${achievement.name} (+${achievement.points} gemas)`,
+                duration: 5000,
+              });
+            });
+            
+            // Refrescar datos del usuario para mostrar las gemas del logro
+            await refreshUserData();
+          }
+        } catch (error) {
+          console.error('Error checking achievements:', error);
+        }
+      } else {
+        const errorData = data;
+        console.error('Error response:', errorData);
+        toast.error(errorData.error || 'Error al completar tarea');
+        setCompletedTasks((prev) => ({ ...prev, [taskId]: false }));
       }
-      setTasks(tasks.map((t) => (t.id === task.id ? updatedTask : t)))
-      triggerCelebration(task)
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error('Error de conexión al completar tarea');
+      setCompletedTasks((prev) => ({ ...prev, [taskId]: false }));
     }
   }
 
@@ -259,71 +372,206 @@ export default function ControlPage() {
     setExpandedTask(expandedTask === taskId ? null : taskId)
   }
 
-  const handleCompletionChange = (taskId: string, completion: number) => {
+  const handleCompletionChange = async (taskId: string, completion: number) => {
     setTaskCompletions((prev) => ({ ...prev, [taskId]: completion }))
 
     const updatedTask = tasks.find((t) => t.id === taskId)
-    if (updatedTask) {
+    if (updatedTask && user?.id) {
+      // Update task in local state immediately
       const newTask = {
         ...updatedTask,
         completionPercentage: completion,
       }
       setTasks(tasks.map((t) => (t.id === taskId ? newTask : t)))
 
+      // Auto-complete when reaches 100%
       if (completion === 100 && !updatedTask.completed) {
-        const finalTask = { ...newTask, completed: true }
-        setTasks(tasks.map((t) => (t.id === taskId ? finalTask : t)))
-        triggerCelebration(finalTask)
+        handleTaskCheck(taskId, true)
       }
     }
   }
 
-  const handleAddComment = (taskId: string) => {
+  const handleAddComment = async (taskId: string) => {
     const commentText = newComments[taskId]
-    if (!commentText?.trim()) return
+    if (!commentText?.trim() || !user?.id) return
 
-    const updatedTask = tasks.find((t) => t.id === taskId)
-    if (updatedTask) {
-      const newComment = {
-        id: Date.now().toString(),
-        author: mockUser.name,
-        text: commentText.trim(),
-        timestamp: new Date().toISOString().split("T")[0],
-      }
-
-      const taskWithComment = {
-        ...updatedTask,
-        comments: [...(updatedTask.comments || []), newComment],
-      }
-
-      setTasks(tasks.map((t) => (t.id === taskId ? taskWithComment : t)))
-      setNewComments((prev) => ({ ...prev, [taskId]: "" }))
-
-      toast.success("Comentario agregado", {
-        icon: <MessageSquare className="h-4 w-4 text-blue-500" />,
+    try {
+      const response = await authFetch('/api/tasks/comments', {
+        method: 'POST',
+        body: JSON.stringify({
+          taskId,
+          userId: user.id,
+          content: commentText.trim()
+        })
       })
+
+      if (response.ok) {
+        const data = await response.json()
+        const updatedTask = tasks.find((t) => t.id === taskId)
+        if (updatedTask) {
+          const newComment = {
+            id: data.data.commentId,
+            author: user.name || "Usuario",
+            text: commentText.trim(),
+            date: new Date().toISOString(),
+          }
+
+          const taskWithComment = {
+            ...updatedTask,
+            comments: [...(updatedTask.comments || []), newComment],
+          }
+
+          setTasks(tasks.map((t) => (t.id === taskId ? taskWithComment : t)))
+          setNewComments((prev) => ({ ...prev, [taskId]: "" }))
+
+          toast.success("Comentario agregado", {
+            icon: <MessageSquare className="h-4 w-4 text-blue-500" />,
+          })
+        }
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Error al agregar comentario')
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast.error('Error al agregar comentario')
     }
   }
 
-  const handleNewTask = (newTask: Omit<Task, "id">) => {
-    const task: Task = {
-      ...newTask,
-      id: Date.now().toString(),
-      completed: false,
-      comments: [],
+  const handleNewTask = async (newTask: Omit<Task, "id">) => {
+    if (!user?.id) return
+    
+    try {
+      const response = await authFetch('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newTask.title,
+          description: newTask.description,
+          category: newTask.category,
+          difficulty: newTask.difficulty,
+          priority: newTask.priority,
+          dueDate: newTask.dueDate,
+          estimatedHours: 1,
+          assignedTo: newTask.assignedTo,
+          createdBy: user.id,
+          userId: user.id
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        // Use the task returned from the server
+        const newTask: Task = {
+          ...data.data.task,
+          comments: [],
+        }
+        setTasks([...tasks, newTask])
+        setShowNewTaskForm(false)
+        toast.success("Tarea creada exitosamente", {
+          icon: <Plus className="h-4 w-4 text-green-500" />,
+        })
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Error al crear tarea')
+      }
+    } catch (error) {
+      console.error('Error creating task:', error)
+      toast.error('Error al crear tarea')
     }
-    setTasks([...tasks, task])
-    setShowNewTaskForm(false)
-    toast.success("Tarea creada exitosamente", {
-      icon: <Plus className="h-4 w-4 text-green-500" />,
-    })
   }
 
-  const handleCheckIn = () => {
-    setHasCheckedIn(true)
+  const handleCheckIn = async () => {
+    if (!user?.id) {
+      toast.error('Usuario no autenticado');
+      return;
+    }
+    
+    console.log('handleCheckIn called:', {
+      userId: user.id,
+      energyLevel: energyLevel[0],
+      priority: priority.trim()
+    });
+    
+    try {
+      const response = await authFetch('/api/checkin', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user.id,
+          energyLevel: energyLevel[0],
+          priority: priority.trim(),
+          notes: ''
+        })
+      });
+      
+      console.log('Check-in response status:', response.status);
+      const data = await response.json();
+      console.log('Check-in response data:', data);
+      
+      if (response.ok) {
+        setHasCheckedIn(true);
+        
+        // Show success message with gems earned
+        toast.success(data.data?.message || 'Check-in registrado exitosamente', {
+          icon: <Gem className="h-4 w-4 text-yellow-500" />,
+        });
+        
+        // Show confetti for successful check-in
+        setShowConfetti(true);
+        
+        // Refresh user data to update gems
+        await refreshUserData();
+
+        // 🏆 VERIFICAR LOGROS AUTOMÁTICOS (racha de días)
+        try {
+          const achievementsResponse = await authFetch('/api/achievements/check', {
+            method: 'POST'
+          });
+          const achievementsData = await achievementsResponse.json();
+          
+          if (achievementsData.success && achievementsData.data.unlockedCount > 0) {
+            achievementsData.data.unlockedAchievements.forEach((achievement: any) => {
+              toast.success(`🏆 ¡Logro desbloqueado!`, {
+                description: `${achievement.name} (+${achievement.points} gemas)`,
+                duration: 5000,
+              });
+            });
+            
+            await refreshUserData();
+          }
+        } catch (error) {
+          console.error('Error checking achievements:', error);
+        }
+        
+      } else {
+        const errorData = data;
+        console.error('Check-in error:', errorData);
+        toast.error(errorData.error || 'Error al registrar check-in');
+      }
+    } catch (error) {
+      console.error('Error during check-in:', error);
+      toast.error('Error de conexión al registrar check-in');
+    }
   }
 
   const achievementIcons = [Timer, Settings, Crown, Zap, Star, Crosshair]
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">Usuario no encontrado</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -409,7 +657,7 @@ export default function ControlPage() {
                   <p className="text-sm font-medium text-gray-600">Gemas Totales</p>
                   <p className="text-3xl font-bold text-red-500 flex items-center gap-2">
                     <Gem className="h-8 w-8" />
-                    {mockUser.total_gems}
+                    {userGems}
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     {achievementIcons.slice(0, 6).map((Icon, i) => (
@@ -480,7 +728,7 @@ export default function ControlPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {task.dueDate?.toLocaleDateString()}
+                              {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Sin fecha'}
                             </span>
                             {task.comments && task.comments.length > 0 && (
                               <span className="flex items-center gap-1">
@@ -583,7 +831,16 @@ export default function ControlPage() {
                                   <Flag className="h-4 w-4 text-red-500" />
                                   <div>
                                     <p className="text-xs text-gray-500">Asignado a</p>
-                                    <p className="font-semibold text-sm">{task.assignedTo}</p>
+                                    <p className="font-semibold text-sm">
+                                      {(() => {
+                                        if (!task.assignedTo) return 'Sin asignar';
+                                        const member = teamMembers.find(m => m.id === task.assignedTo);
+                                        if (member) return member.name || member.email;
+                                        // If not found in team members, might be the current user
+                                        if (task.assignedTo === user?.id) return user.name || user.email || 'Yo';
+                                        return 'Usuario no encontrado';
+                                      })()}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -602,11 +859,14 @@ export default function ControlPage() {
                               {/* Existing Comments */}
                               {task.comments && task.comments.length > 0 && (
                                 <div className="space-y-3 mb-4">
-                                  {task.comments.map((comment) => (
-                                    <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
+                                  {task.comments.map((comment, index) => (
+                                    <div key={comment.id || index} className="bg-gray-50 rounded-lg p-3">
                                       <div className="flex items-center justify-between mb-1">
                                         <span className="font-medium text-sm text-gray-900">{comment.author}</span>
-                                        <span className="text-xs text-gray-500">{comment.timestamp}</span>
+                                        <span className="text-xs text-gray-500">
+                                          {comment.date ? new Date(comment.date).toLocaleDateString() : 
+                                           (comment as any).timestamp || 'Ahora'}
+                                        </span>
                                       </div>
                                       <p className="text-sm text-gray-700">{comment.text}</p>
                                     </div>
@@ -697,6 +957,7 @@ export default function ControlPage() {
                         max={5}
                         min={1}
                         step={1}
+                        disabled={hasCheckedIn}
                         className="w-full mb-3 [&>*]:bg-red-500"
                       />
                       <div className="flex justify-between text-xs text-gray-500">
@@ -712,8 +973,9 @@ export default function ControlPage() {
                     <Textarea
                       value={priority}
                       onChange={(e) => setPriority(e.target.value)}
-                      placeholder="Escribe tu prioridad principal..."
-                      className="flex-grow w-full p-4 border border-gray-200 rounded-xl resize-none text-sm focus:border-red-500 focus:ring-red-500 shadow-sm"
+                      placeholder={hasCheckedIn ? "Ya completaste tu check-in de hoy ✓" : "Escribe tu prioridad principal..."}
+                      disabled={hasCheckedIn}
+                      className="flex-grow w-full p-4 border border-gray-200 rounded-xl resize-none text-sm focus:border-red-500 focus:ring-red-500 shadow-sm disabled:bg-gray-50 disabled:text-gray-500"
                       rows={4}
                     />
                   </div>
@@ -721,24 +983,25 @@ export default function ControlPage() {
                   <Button
                     onClick={handleCheckIn}
                     disabled={hasCheckedIn || !priority.trim()}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 font-medium disabled:opacity-50 text-sm shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 font-medium disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <Heart className="h-4 w-4 mr-2" />
-                    {hasCheckedIn ? "✓ Check-in Completado" : "Registrar Check-in"}
+                    {hasCheckedIn ? "✓ Ya hiciste tu check-in hoy" : "Registrar Check-in"}
                   </Button>
 
                   {hasCheckedIn && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200 shadow-sm"
+                      className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 shadow-sm"
                     >
                       <div className="text-center">
-                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2 shadow-md">
-                          <Heart className="h-5 w-5 text-white" />
+                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                          <Heart className="h-6 w-6 text-white fill-white" />
                         </div>
-                        <p className="text-green-800 font-medium text-sm">¡Excelente!</p>
-                        <p className="text-green-700 text-xs">Has completado tu check-in diario.</p>
+                        <p className="text-green-800 font-bold text-base mb-1">¡Check-in Completado!</p>
+                        <p className="text-green-700 text-sm">Ya registraste tu check-in del día.</p>
+                        <p className="text-green-600 text-xs mt-2">Vuelve mañana para continuar tu racha 🔥</p>
                       </div>
                     </motion.div>
                   )}

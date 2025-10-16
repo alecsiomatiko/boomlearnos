@@ -1,11 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
+import { getCurrentUser } from '@/lib/server/auth'
+import { getOrgIdForRequest } from '@/lib/server/org-utils'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 [PROFILE] Obteniendo perfil - iniciando...')
 
-    // Para simplificar el demo, vamos a obtener el usuario más reciente que completó el onboarding
+    // ✅ AUTENTICACIÓN
+    const currentUser = await getCurrentUser(request);
+    if (!currentUser) {
+      return NextResponse.json({
+        success: false,
+        error: 'No autorizado'
+      }, { status: 401 });
+    }
+
+    const organizationId = await getOrgIdForRequest(request, { allowHeaderFallback: false });
+    if (!organizationId) {
+      return NextResponse.json({
+        success: false,
+        error: 'No autorizado: falta organization_id'
+      }, { status: 401 });
+    }
+
+    // Obtener userId de los query parameters o usar el del usuario autenticado
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId') || currentUser.id;
+
+    console.log('🔍 [PROFILE] Ejecutando consulta para userId:', userId)
+
+    // Consulta SQL bien formada - FILTRAR POR organization_id
     const query = `
       SELECT 
         u.id,
@@ -17,6 +42,9 @@ export async function GET(request: NextRequest) {
         u.bio,
         u.city,
         u.profile_image,
+        u.role,
+        u.total_gems,
+        u.first_login,
         org.id as org_id,
         org.name as company_name,
         org.business_type,
@@ -28,13 +56,9 @@ export async function GET(request: NextRequest) {
         org.values_json as 'values'
       FROM users u
       LEFT JOIN organizations org ON u.organization_id = org.id
-      WHERE u.onboarding_step = 'completed'
-      ORDER BY u.created_at DESC
-      LIMIT 1
-    `
-
-    console.log('🔍 [PROFILE] Ejecutando consulta...')
-    const result = await executeQuery(query, []) as any[]
+      WHERE u.id = ? AND u.organization_id = ?
+    `;
+    const result = await executeQuery(query, [userId, organizationId]) as any[];
     
     console.log('🔍 [PROFILE] Resultado consulta:', result?.length || 0, 'registros')
     
@@ -49,6 +73,7 @@ export async function GET(request: NextRequest) {
     const user = result[0]
 
     const profile = {
+      id: user.id,
       firstName: user.first_name || '',
       lastName: user.last_name || '',
       email: user.email || '',
@@ -56,8 +81,12 @@ export async function GET(request: NextRequest) {
       position: user.position || '',
       bio: user.bio || '',
       city: user.city || '',
-      profileImage: user.profile_image || '', // Ahora con la columna real
+      role: user.role || 'user',
+      totalGems: user.total_gems || 0,
+      profileImage: user.profile_image || '',
+      first_login: user.first_login || false,
       organization: {
+        id: user.org_id,
         companyName: user.company_name || '',
         businessType: user.business_type || '',
         companySize: user.company_size || '',
@@ -90,26 +119,19 @@ export async function PUT(request: NextRequest) {
     console.log('🔍 [PROFILE] Actualizando perfil...')
     
     const data = await request.json()
+    
+    // Obtener userId de los query parameters o del body
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId') || data.userId
 
-    // Obtener el usuario usando el mismo método exitoso que GET
-    const userQuery = `
-      SELECT id FROM users 
-      WHERE onboarding_step = 'completed'
-      ORDER BY created_at DESC
-      LIMIT 1
-    `
-    
-    const userResult = await executeQuery(userQuery, [])
-    
-    if (!Array.isArray(userResult) || userResult.length === 0) {
-      console.log('❌ [PROFILE] No se encontró usuario para actualizar')
+    if (!userId) {
+      console.log('❌ [PROFILE] userId no proporcionado para actualización')
       return NextResponse.json(
-        { success: false, error: 'Usuario no encontrado' },
-        { status: 404 }
+        { success: false, error: 'userId es requerido para actualizar' },
+        { status: 400 }
       )
     }
 
-    const userId = (userResult[0] as any).id
     console.log('✅ [PROFILE] Actualizando usuario:', userId)
 
     // Actualizar datos del usuario

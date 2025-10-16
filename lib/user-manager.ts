@@ -21,46 +21,48 @@ const DEFAULT_USER: User = {
 }
 
 // Función simple y robusta para obtener usuario
-export async function getUser(): Promise<User> {
+export async function getUser(userId?: string): Promise<User> {
   try {
     console.log('🔍 [USER-MANAGER] Obteniendo usuario...')
     
-    const response = await fetch('/api/user/profile')
+    // Si no se proporciona userId, intentar obtener cualquier usuario (fallback)
+    const url = userId ? `/api/user/profile?userId=${userId}` : '/api/user/profile'
+    const response = await fetch(url)
+    
     if (response.ok) {
       const result = await response.json()
-      if (result.success && result.user) {
+      if (result.success && result.profile) {
         console.log('✅ [USER-MANAGER] Usuario obtenido de la API')
-        const dbUser = result.user
+        const profile = result.profile
         
-        // Mapear datos de la base de datos
+        // Mapear datos reales de la base de datos
         const user: User = {
-          id: dbUser.id,
-          email: dbUser.email,
-          name: dbUser.name || `${dbUser.first_name || ''} ${dbUser.last_name || ''}`.trim() || dbUser.email,
-          phone: dbUser.phone || '',
-          city: dbUser.city || '',
-          business_type: dbUser.business_type || '',
-          role: dbUser.role || 'user',
+          id: profile.id || 'default-user-id',
+          email: profile.email || 'usuario@ejemplo.com',
+          name: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email || 'Usuario del Sistema',
+          phone: profile.phone || '',
+          city: profile.city || '',
+          business_type: profile.organization?.businessType || '',
+          role: profile.role || 'user',
           level: 'Principiante',
-          total_gems: 0,
+          total_gems: profile.totalGems || 0,
           current_streak: 0,
           longest_streak: 0,
           energy: 100,
           badges: [],
-          created_at: dbUser.created_at || new Date().toISOString(),
-          updated_at: dbUser.updated_at || new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
         
+        console.log('✅ [USER-MANAGER] Usuario mapeado:', user.name)
         return user
       }
     }
     
-    console.warn('⚠️ [USER-MANAGER] No se pudo obtener usuario de la API, usando default')
+    console.log('⚠️ [USER-MANAGER] API falló, usando usuario por defecto')
     return DEFAULT_USER
-    
   } catch (error) {
     console.error('❌ [USER-MANAGER] Error obteniendo usuario:', error)
-    console.log('🔄 [USER-MANAGER] Usando usuario por defecto')
     return DEFAULT_USER
   }
 }
@@ -71,16 +73,11 @@ export async function getOnboardingStatus(): Promise<{completed: boolean, data?:
     const response = await fetch('/api/diagnostics/overview')
     if (response.ok) {
       const result = await response.json()
-      if (result.success && result.diagnostics) {
-        return {
-          completed: result.diagnostics.onboardingDiagnostic.completed,
-          data: result.diagnostics.onboardingDiagnostic.answers
-        }
-      }
+      return { completed: true, data: result }
     }
-    return { completed: false }
   } catch (error) {
     console.error('Error obteniendo estado del onboarding:', error)
-    return { completed: false }
   }
+  
+  return { completed: false }
 }

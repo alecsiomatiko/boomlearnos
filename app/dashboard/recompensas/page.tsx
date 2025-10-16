@@ -8,135 +8,143 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Gift, Star, Trophy, Coins, ShoppingCart, Clock, Zap, Target, Award, Crown, Gem } from "lucide-react"
-import { initializeAndGetUserData } from "@/lib/data-utils"
-import type { User } from "@/types"
+import { useAuth } from "@/contexts/auth-context"
+import { authFetch } from "@/lib/auth-utils"
+import { ConfettiExplosion } from "@/components/confetti-explosion"
+import { toast } from "sonner"
+
+interface Reward {
+  id: number
+  title: string
+  description: string
+  cost: number
+  category: string
+  rarity: string
+  icon: string
+  available: boolean
+  canAfford: boolean
+  claimedByUser: number
+  stock?: number
+  maxClaimsPerUser?: number
+}
+
+interface UserGems {
+  total: number
+  available: number
+}
+
+interface RewardStats {
+  totalClaimed: number
+  totalSpent: number
+}
+
+const iconMap: { [key: string]: any } = {
+  Clock,
+  Gift,
+  Target,
+  Zap,
+  Award,
+  Trophy,
+  Crown,
+  Star,
+  Coins,
+  Gem
+}
 
 export default function RecompensasPage() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user } = useAuth()
+  const [rewards, setRewards] = useState<Reward[]>([])
+  const [userGems, setUserGems] = useState<UserGems>({ total: 0, available: 0 })
+  const [stats, setStats] = useState<RewardStats>({ totalClaimed: 0, totalSpent: 0 })
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [claiming, setClaiming] = useState<number | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false) // 🎉 CONFETI
 
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
-  }, [])
+    async function fetchRewards() {
+      if (!user?.id) return
+      
+      try {
+        console.log('🎁 [RECOMPENSAS] Cargando recompensas del usuario:', user.id)
+        const response = await authFetch(`/api/rewards?userId=${user.id}&category=${selectedCategory}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          console.log('✅ [RECOMPENSAS] Recompensas cargadas:', data.data.rewards.length)
+          setRewards(data.data.rewards)
+          setUserGems(data.data.userGems)
+          setStats(data.data.stats)
+        } else {
+          console.error('❌ [RECOMPENSAS] Error:', data.error)
+        }
+      } catch (error) {
+        console.error('❌ [RECOMPENSAS] Error al cargar recompensas:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchRewards()
+  }, [user?.id, selectedCategory])
 
-  const rewards = [
-    {
-      id: 1,
-      title: "Día Libre Extra",
-      description: "Un día libre adicional para disfrutar",
-      cost: 500,
-      category: "tiempo",
-      rarity: "common",
-      icon: <Clock className="h-6 w-6" />,
-      available: true,
-      claimed: 0,
-      limit: 2,
-    },
-    {
-      id: 2,
-      title: "Almuerzo Premium",
-      description: "Almuerzo en restaurante de lujo para 2 personas",
-      cost: 300,
-      category: "experiencia",
-      rarity: "rare",
-      icon: <Gift className="h-6 w-6" />,
-      available: true,
-      claimed: 1,
-      limit: 3,
-    },
-    {
-      id: 3,
-      title: "Curso Online Premium",
-      description: "Acceso a cualquier curso de desarrollo profesional",
-      cost: 800,
-      category: "desarrollo",
-      rarity: "epic",
-      icon: <Target className="h-6 w-6" />,
-      available: true,
-      claimed: 0,
-      limit: 1,
-    },
-    {
-      id: 4,
-      title: "Gadget Tecnológico",
-      description: "Auriculares inalámbricos de alta gama",
-      cost: 1200,
-      category: "tecnologia",
-      rarity: "legendary",
-      icon: <Zap className="h-6 w-6" />,
-      available: true,
-      claimed: 0,
-      limit: 1,
-    },
-    {
-      id: 5,
-      title: "Trabajo Remoto Semanal",
-      description: "Una semana completa de trabajo desde casa",
-      cost: 400,
-      category: "tiempo",
-      rarity: "rare",
-      icon: <Clock className="h-6 w-6" />,
-      available: false,
-      claimed: 2,
-      limit: 2,
-    },
-    {
-      id: 6,
-      title: "Certificación Profesional",
-      description: "Pago completo de certificación en tu área",
-      cost: 1500,
-      category: "desarrollo",
-      rarity: "legendary",
-      icon: <Award className="h-6 w-6" />,
-      available: true,
-      claimed: 0,
-      limit: 1,
-    },
-  ]
+  const handleClaimReward = async (rewardId: number) => {
+    if (!user?.id || claiming) return
+    
+    setClaiming(rewardId)
+    try {
+      const response = await authFetch('/api/rewards', {
+        method: 'POST',
+        body: JSON.stringify({ rewardId })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        console.log('✅ [RECOMPENSAS] Recompensa canjeada exitosamente')
+        
+        // 🎉 MOSTRAR CONFETI
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 3000)
+        
+        // Mostrar toast de éxito
+        toast.success(`¡Recompensa canjeada! 🎉`, {
+          description: data.data.message,
+          duration: 5000,
+        })
+        
+        // Recargar datos
+        const refreshResponse = await authFetch(`/api/rewards?userId=${user.id}&category=${selectedCategory}`)
+        const refreshData = await refreshResponse.json()
+        
+        if (refreshData.success) {
+          setRewards(refreshData.data.rewards)
+          setUserGems(refreshData.data.userGems)
+          setStats(refreshData.data.stats)
+        }
+      } else {
+        console.error('❌ [RECOMPENSAS] Error al canjear:', data.error)
+        toast.error('Error al canjear recompensa', {
+          description: data.error,
+        })
+      }
+    } catch (error) {
+      console.error('❌ [RECOMPENSAS] Error:', error)
+      toast.error('Error', {
+        description: 'Error al procesar la solicitud',
+      })
+    } finally {
+      setClaiming(null)
+    }
+  }
 
-  const achievements = [
-    {
-      id: 1,
-      title: "Primera Misión",
-      description: "Completa tu primera tarea",
-      points: 50,
-      unlocked: true,
-      icon: <Star className="h-5 w-5" />,
-      rarity: "common",
-    },
-    {
-      id: 2,
-      title: "Racha de 7 Días",
-      description: "Completa tareas durante 7 días consecutivos",
-      points: 200,
-      unlocked: true,
-      icon: <Trophy className="h-5 w-5" />,
-      rarity: "rare",
-    },
-    {
-      id: 3,
-      title: "Maestro de Tareas",
-      description: "Completa 50 tareas en total",
-      points: 500,
-      unlocked: false,
-      progress: 24,
-      total: 50,
-      icon: <Crown className="h-5 w-5" />,
-      rarity: "epic",
-    },
-    {
-      id: 4,
-      title: "Perfeccionista",
-      description: "Completa 10 tareas con calificación perfecta",
-      points: 300,
-      unlocked: false,
-      progress: 3,
-      total: 10,
-      icon: <Gem className="h-5 w-5" />,
-      rarity: "legendary",
-    },
-  ]
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -179,7 +187,7 @@ export default function RecompensasPage() {
   const filteredRewards =
     selectedCategory === "all" ? rewards : rewards.filter((reward) => reward.category === selectedCategory)
 
-  const userPoints = user?.points || 0
+  const userPoints = userGems?.total || user?.total_gems || 0
 
   if (!user) {
     return (
@@ -191,6 +199,13 @@ export default function RecompensasPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
+      {/* 🎉 CONFETI */}
+      {showConfetti && (
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+          <ConfettiExplosion trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
+        </div>
+      )}
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -218,7 +233,7 @@ export default function RecompensasPage() {
                     <span className="text-4xl font-bold">{userPoints.toLocaleString()}</span>
                   </div>
                   <Badge className="bg-white/20 text-white border-white/30">
-                    Nivel {user.level?.replace("_", " ").toUpperCase() || "INTERN"}
+                    Nivel {typeof user.level === 'string' ? user.level.replace("_", " ").toUpperCase() : "INTERN"}
                   </Badge>
                 </div>
               </div>
@@ -336,7 +351,8 @@ export default function RecompensasPage() {
                           </span>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {reward.claimed}/{reward.limit} canjeados
+                          {reward.claimedByUser || 0} canjeados
+                          {reward.maxClaimsPerUser && ` / ${reward.maxClaimsPerUser} máximo`}
                         </div>
                       </div>
 
@@ -346,9 +362,16 @@ export default function RecompensasPage() {
                             ? "bg-brand-red hover:bg-red-600 text-white"
                             : "bg-gray-200 text-gray-500 cursor-not-allowed"
                         }`}
-                        disabled={!reward.available || userPoints < reward.cost}
+                        disabled={!reward.available || userPoints < reward.cost || claiming === reward.id}
+                        onClick={() => handleClaimReward(reward.id)}
                       >
-                        {!reward.available ? "Agotado" : userPoints < reward.cost ? "Puntos Insuficientes" : "Canjear"}
+                        {claiming === reward.id 
+                          ? "Canjeando..." 
+                          : !reward.available 
+                            ? "Agotado" 
+                            : userPoints < reward.cost 
+                              ? "Puntos Insuficientes" 
+                              : "Canjear"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -358,80 +381,9 @@ export default function RecompensasPage() {
           </TabsContent>
 
           <TabsContent value="achievements" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              {achievements.map((achievement, index) => (
-                <motion.div
-                  key={achievement.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Card
-                    className={`shadow-lg border-0 rounded-2xl ${achievement.unlocked ? "bg-white" : "bg-gray-50"}`}
-                  >
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`p-3 rounded-xl ${
-                              achievement.unlocked ? "bg-yellow-500 text-white" : "bg-gray-300 text-gray-500"
-                            }`}
-                          >
-                            {achievement.icon}
-                          </div>
-                          <div>
-                            <CardTitle
-                              className={`text-lg font-bold ${
-                                achievement.unlocked ? "text-gray-900" : "text-gray-500"
-                              }`}
-                            >
-                              {achievement.title}
-                            </CardTitle>
-                            <Badge className={getRarityColor(achievement.rarity)}>
-                              {getRarityText(achievement.rarity)}
-                            </Badge>
-                          </div>
-                        </div>
-                        {achievement.unlocked && (
-                          <Badge className="bg-green-100 text-green-800 border-green-200">Desbloqueado</Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className={`text-sm ${achievement.unlocked ? "text-gray-600" : "text-gray-400"}`}>
-                        {achievement.description}
-                      </p>
-
-                      {!achievement.unlocked && achievement.progress !== undefined && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Progreso</span>
-                            <span className="font-semibold">
-                              {achievement.progress}/{achievement.total}
-                            </span>
-                          </div>
-                          <Progress value={(achievement.progress / achievement.total) * 100} className="h-2" />
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="flex items-center gap-2">
-                          <Coins className={`h-5 w-5 ${achievement.unlocked ? "text-yellow-500" : "text-gray-400"}`} />
-                          <span className={`font-bold ${achievement.unlocked ? "text-gray-900" : "text-gray-500"}`}>
-                            +{achievement.points} puntos
-                          </span>
-                        </div>
-                        {achievement.unlocked && (
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            <Award className="h-3 w-3 mr-1" />
-                            Completado
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+            <div className="text-center py-12">
+              <h3 className="text-xl text-gray-600">Logros relacionados con recompensas próximamente</h3>
+              <p className="text-gray-500 mt-2">Esta sección se integrará con el módulo de logros</p>
             </div>
           </TabsContent>
         </Tabs>

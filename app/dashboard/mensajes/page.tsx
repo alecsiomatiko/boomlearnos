@@ -23,283 +23,246 @@ import {
   Pin,
   Settings,
 } from "lucide-react"
-import { initializeAndGetUserData } from "@/lib/data-utils"
-import type { User } from "@/types"
+import { useAuth } from "@/contexts/auth-context"
+import { authFetch } from "@/lib/auth-utils"
+
+interface Conversation {
+  id: number
+  name: string
+  role: string
+  avatar?: string
+  lastMessage: string
+  timestamp: string
+  unread: number
+  online: boolean
+  type: 'direct' | 'group'
+  members: number
+  sharedFiles: number
+  sharedTasks: number
+  isPinned: boolean
+  lastActivity: string
+  description: string
+}
+
+interface Message {
+  id: number
+  senderId: string | number
+  senderName: string
+  senderAvatar?: string
+  content: string
+  timestamp: string
+  type: 'text' | 'file' | 'image' | 'system'
+  fileName?: string
+  fileUrl?: string
+  replyTo?: number
+  reactions: string[]
+  isRead: boolean
+}
+
+interface Contact {
+  id: number
+  name: string
+  role: string
+  avatar?: string
+  online: boolean
+  department: string
+  email: string
+  phone: string
+  existingConversationId?: number
+}
 
 export default function MensajesPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [selectedChat, setSelectedChat] = useState<number | null>(1)
+  const { user } = useAuth()
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [selectedChat, setSelectedChat] = useState<number | null>(null)
   const [newMessage, setNewMessage] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState<"directorio" | "chats">("chats")
   const [isTyping, setIsTyping] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Cargar conversaciones del usuario
+  const loadConversations = async () => {
+    if (!user?.id) return
+    
+    try {
+      const response = await authFetch(`/api/messages/conversations?userId=${user.id}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setConversations(data.data.conversations)
+        // Seleccionar la primera conversación por defecto
+        if (data.data.conversations.length > 0 && !selectedChat) {
+          setSelectedChat(data.data.conversations[0].id)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error)
+    }
+  }
+
+  // Cargar contactos de la organización
+  const loadContacts = async () => {
+    if (!user?.id) return
+    
+    try {
+      console.log('📞 [FRONTEND] Cargando contactos...', { userId: user.id, searchTerm })
+      const response = await authFetch(`/api/messages/contacts?search=${searchTerm}`)
+      const data = await response.json()
+      
+      console.log('📞 [FRONTEND] Respuesta de contactos:', data)
+      
+      if (data.success && data.data?.contacts) {
+        console.log(`📞 [FRONTEND] Contactos encontrados: ${data.data.contacts.length}`)
+        setContacts(data.data.contacts)
+      } else {
+        console.error('📞 [FRONTEND] No se encontraron contactos o error:', data)
+      }
+    } catch (error) {
+      console.error('❌ [FRONTEND] Error loading contacts:', error)
+    }
+  }
+
+  // Cargar mensajes de una conversación
+  const loadMessages = async (conversationId: number) => {
+    if (!user?.id) return
+    
+    try {
+      const response = await authFetch(`/api/messages/${conversationId}?userId=${user.id}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setMessages(data.data.messages)
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error)
+    }
+  }
+
+  // Enviar mensaje
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat || !user?.id) return
+    
+    try {
+      const response = await authFetch(`/api/messages/${selectedChat}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          conversationId: selectedChat,
+          userId: user.id,
+          content: newMessage.trim(),
+          type: 'text'
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        // Agregar el mensaje a la lista local
+        setMessages(prev => [...prev, data.data.message])
+        setNewMessage("")
+        // Recargar conversaciones para actualizar el último mensaje
+        loadConversations()
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+    }
+  }
+
+  // Crear conversación con contacto
+  const startConversationWithContact = async (contactId: number) => {
+    if (!user?.id) return
+    
+    try {
+      const response = await authFetch('/api/messages/contacts', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user.id,
+          contactId: contactId
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        // Cambiar a la tab de chats y seleccionar la conversación
+        setActiveTab('chats')
+        setSelectedChat(data.data.conversationId)
+        // Recargar conversaciones para mostrar la nueva/existente
+        loadConversations()
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error)
+    }
+  }
 
   useEffect(() => {
-    const currentUser = initializeAndGetUserData()
-    setUser(currentUser)
-  }, [])
+    if (user?.id) {
+      setIsLoading(true)
+      Promise.all([
+        loadConversations(),
+        activeTab === 'directorio' ? loadContacts() : Promise.resolve()
+      ]).finally(() => setIsLoading(false))
+    }
+  }, [user?.id, activeTab])
 
-  const conversations = [
-    {
-      id: 1,
-      name: "Equipo de Marketing",
-      role: "Grupo",
-      avatar: "/placeholder.svg?height=40&width=40&text=EM",
-      lastMessage: "Ana: ¿Revisamos la nueva campaña de redes sociales para el Q4?",
-      timestamp: "10:30 AM",
-      unread: 3,
-      online: true,
-      type: "group",
-      members: 5,
-      sharedFiles: 3,
-      sharedTasks: 2,
-      isPinned: true,
-      lastActivity: "Hace 2 min",
-      description: "Equipo encargado de las estrategias de marketing digital y campañas publicitarias.",
-    },
-    {
-      id: 2,
-      name: "JUAN PABLO",
-      role: "Administrador",
-      avatar: "/placeholder.svg?height=40&width=40&text=JP",
-      lastMessage: "El deploy de producción está programado para mañana a las 3 PM",
-      timestamp: "9:45 AM",
-      unread: 0,
-      online: true,
-      type: "direct",
-      members: 1,
-      sharedFiles: 8,
-      sharedTasks: 5,
-      isPinned: false,
-      lastActivity: "En línea",
-      description: "Administrador del sistema con acceso completo a todas las funcionalidades.",
-    },
-    {
-      id: 3,
-      name: "JUAN PABLO",
-      role: "Administrador",
-      avatar: "/placeholder.svg?height=40&width=40&text=JP",
-      lastMessage: "Los reportes de engagement están listos para revisión",
-      timestamp: "Ayer",
-      unread: 1,
-      online: false,
-      type: "direct",
-      members: 1,
-      sharedFiles: 2,
-      sharedTasks: 1,
-      isPinned: false,
-      lastActivity: "Hace 2 horas",
-      description: "Conversación secundaria para temas administrativos específicos.",
-    },
-  ]
+  useEffect(() => {
+    if (selectedChat) {
+      loadMessages(selectedChat)
+    }
+  }, [selectedChat])
 
-  const directoryContacts = [
-    {
-      id: 1,
-      name: "Ana García",
-      role: "Gerente de Ventas",
-      avatar: "/placeholder.svg?height=40&width=40&text=AG",
-      online: true,
-      department: "Ventas",
-      email: "ana.garcia@empresa.com",
-      phone: "+1 234 567 8901",
-    },
-    {
-      id: 2,
-      name: "Carlos Rodríguez",
-      role: "Desarrollador Senior",
-      avatar: "/placeholder.svg?height=40&width=40&text=CR",
-      online: false,
-      department: "Desarrollo",
-      email: "carlos.rodriguez@empresa.com",
-      phone: "+1 234 567 8902",
-    },
-    {
-      id: 3,
-      name: "María López",
-      role: "Especialista en Marketing",
-      avatar: "/placeholder.svg?height=40&width=40&text=ML",
-      online: true,
-      department: "Marketing",
-      email: "maria.lopez@empresa.com",
-      phone: "+1 234 567 8903",
-    },
-    {
-      id: 4,
-      name: "Luis Martínez",
-      role: "Analista de Datos",
-      avatar: "/placeholder.svg?height=40&width=40&text=LM",
-      online: false,
-      department: "Análisis",
-      email: "luis.martinez@empresa.com",
-      phone: "+1 234 567 8904",
-    },
-    {
-      id: 5,
-      name: "Sofia Chen",
-      role: "Diseñadora UX/UI",
-      avatar: "/placeholder.svg?height=40&width=40&text=SC",
-      online: true,
-      department: "Diseño",
-      email: "sofia.chen@empresa.com",
-      phone: "+1 234 567 8905",
-    },
-  ]
-
-  // Mensajes específicos para cada conversación
-  const messagesByConversation: { [key: number]: any[] } = {
-    1: [
-      {
-        id: 1,
-        senderId: 2,
-        senderName: "Ana García",
-        content: "Hola, ¿cómo va el proyecto de redes sociales?",
-        timestamp: "10:25 AM",
-        type: "text",
-        reactions: ["👍"],
-        isRead: true,
-      },
-      {
-        id: 2,
-        senderId: "me",
-        senderName: "Tú",
-        content: "¡Avanzando bien! Estamos terminando la fase de diseño",
-        timestamp: "10:26 AM",
-        type: "text",
-        reactions: [],
-        isRead: true,
-      },
-      {
-        id: 3,
-        senderId: 2,
-        senderName: "Ana García",
-        content: "Perfecto! ¿Necesitas ayuda con algo?",
-        timestamp: "10:27 AM",
-        type: "text",
-        reactions: [],
-        isRead: true,
-      },
-      {
-        id: 4,
-        senderId: "me",
-        senderName: "Tú",
-        content: "Sí, necesito revisar los mockups. ¿Podrías darme tu opinión?",
-        timestamp: "10:28 AM",
-        type: "text",
-        reactions: [],
-        isRead: false,
-      },
-    ],
-    2: [
-      {
-        id: 1,
-        senderId: 2,
-        senderName: "JUAN PABLO",
-        content: "¿Podemos revisar la campaña de redes sociales para el próximo trimestre?",
-        timestamp: "10:25 AM",
-        type: "text",
-        reactions: ["👍", "❤️"],
-        isRead: true,
-      },
-      {
-        id: 2,
-        senderId: "me",
-        senderName: "Tú",
-        content: "¡Por supuesto! Los números del último mes se ven muy prometedores. ¿Tienes los reportes listos?",
-        timestamp: "10:26 AM",
-        type: "text",
-        reactions: [],
-        isRead: true,
-      },
-      {
-        id: 3,
-        senderId: 2,
-        senderName: "JUAN PABLO",
-        content: "Adjunto el análisis de engagement de las últimas campañas",
-        timestamp: "10:27 AM",
-        type: "file",
-        fileName: "Analisis_Engagement_Q3.pdf",
-        reactions: ["📊"],
-        isRead: true,
-      },
-      {
-        id: 4,
-        senderId: 2,
-        senderName: "JUAN PABLO",
-        content: "Excelente trabajo equipo. ¿Podemos programar una reunión para mañana?",
-        timestamp: "10:28 AM",
-        type: "text",
-        reactions: [],
-        isRead: true,
-      },
-      {
-        id: 5,
-        senderId: "me",
-        senderName: "Tú",
-        content: "Perfecto, ¿qué tal a las 2 PM en la sala de juntas?",
-        timestamp: "10:29 AM",
-        type: "text",
-        reactions: [],
-        isRead: false,
-      },
-    ],
-    3: [
-      {
-        id: 1,
-        senderId: 2,
-        senderName: "JUAN PABLO",
-        content: "Los reportes de la semana están listos para revisión",
-        timestamp: "9:15 AM",
-        type: "text",
-        reactions: [],
-        isRead: true,
-      },
-      {
-        id: 2,
-        senderId: "me",
-        senderName: "Tú",
-        content: "Perfecto, ¿podrías enviarlos por email también?",
-        timestamp: "9:16 AM",
-        type: "text",
-        reactions: [],
-        isRead: true,
-      },
-      {
-        id: 3,
-        senderId: 2,
-        senderName: "JUAN PABLO",
-        content: "¡Claro! Ya los envié. Revisa tu bandeja de entrada",
-        timestamp: "9:17 AM",
-        type: "text",
-        reactions: ["✅"],
-        isRead: false,
-      },
-    ],
-  }
+  useEffect(() => {
+    if (activeTab === 'directorio' && searchTerm) {
+      loadContacts()
+    }
+  }, [searchTerm])
 
   const filteredConversations = conversations.filter(
     (conv) =>
       conv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.role.toLowerCase().includes(searchTerm.toLowerCase()),
+      conv.role?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const filteredContacts = directoryContacts.filter(
+  const filteredContacts = contacts.filter(
     (contact) =>
       contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.department.toLowerCase().includes(searchTerm.toLowerCase()),
+      contact.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.department?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const selectedConversation = conversations.find((conv) => conv.id === selectedChat)
-  const currentMessages = selectedChat ? messagesByConversation[selectedChat] || [] : []
+  const currentMessages = messages
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat) return
+
+    try {
+      console.log('📤 [SEND] Enviando mensaje:', { selectedChat, content: newMessage.substring(0, 30) })
       setIsTyping(true)
-      setTimeout(() => {
-        setIsTyping(false)
-      }, 1000)
-      setNewMessage("")
+      const response = await authFetch(`/api/messages/${selectedChat}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newMessage })
+      })
+
+      console.log('📤 [SEND] Response status:', response.status, response.ok)
+      const data = await response.json()
+      console.log('📤 [SEND] Response data:', data)
+
+      if (response.ok && data.success) {
+        console.log('✅ [SEND] Mensaje enviado exitosamente')
+        setNewMessage("")
+        // Reload messages to show the new one
+        await loadMessages(selectedChat)
+      } else {
+        console.error('❌ [SEND] Error al enviar:', data.error || 'Error desconocido')
+      }
+    } catch (error) {
+      console.error('❌ [SEND] Exception:', error)
+    } finally {
+      setIsTyping(false)
     }
   }
 
@@ -375,7 +338,7 @@ export default function MensajesPage() {
                               <Avatar className="h-10 w-10">
                                 <AvatarImage src={conversation.avatar || "/placeholder.svg"} alt={conversation.name} />
                                 <AvatarFallback className="bg-red-100 text-red-600 text-sm font-bold">
-                                  {conversation.name === "Equipo de Marketing" ? "EM" : "JP"}
+                                  {conversation.name?.split(" ").map((n) => n[0]).join("") || "U"}
                                 </AvatarFallback>
                               </Avatar>
                               {conversation.online && (
@@ -429,9 +392,7 @@ export default function MensajesPage() {
                           key={contact.id}
                           whileHover={{ scale: 1.02 }}
                           className="p-3 mx-3 rounded-2xl cursor-pointer transition-all duration-200 hover:bg-gray-50"
-                          onClick={() => {
-                            setActiveTab("chats")
-                          }}
+                          onClick={() => startConversationWithContact(contact.id)}
                         >
                           <div className="flex items-center gap-3">
                             <div className="relative">
@@ -477,7 +438,7 @@ export default function MensajesPage() {
                             alt={selectedConversation.name}
                           />
                           <AvatarFallback className="bg-red-500 text-white font-bold">
-                            {selectedConversation.name === "Equipo de Marketing" ? "EM" : "JP"}
+                            {selectedConversation.name?.split(" ").map((n) => n[0]).join("") || "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -560,14 +521,10 @@ export default function MensajesPage() {
                           {message.senderId !== "me" && (
                             <Avatar className="h-8 w-8 order-1 mr-3">
                               <AvatarFallback className="bg-red-100 text-red-600 text-xs font-bold">
-                                {message.senderName === "Ana García"
-                                  ? "AG"
-                                  : message.senderName === "JUAN PABLO"
-                                    ? "JP"
-                                    : message.senderName
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")}
+                                {message.senderName
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("") || "U"}
                               </AvatarFallback>
                             </Avatar>
                           )}
@@ -580,7 +537,7 @@ export default function MensajesPage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-red-100 text-red-600 text-xs font-bold">
-                                {selectedConversation.name === "Equipo de Marketing" ? "EM" : "JP"}
+                                {selectedConversation.name?.split(" ").map((n) => n[0]).join("") || "U"}
                               </AvatarFallback>
                             </Avatar>
                             <div className="bg-gray-100 rounded-2xl p-4">
@@ -669,7 +626,7 @@ export default function MensajesPage() {
                         alt={selectedConversation.name}
                       />
                       <AvatarFallback className="bg-red-500 text-white font-bold text-lg">
-                        {selectedConversation.name === "Equipo de Marketing" ? "EM" : "JP"}
+                        {selectedConversation.name?.split(" ").map((n) => n[0]).join("") || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <h4 className="font-bold text-lg text-gray-900 mb-1">{selectedConversation.name}</h4>

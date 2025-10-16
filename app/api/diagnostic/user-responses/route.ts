@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
         FROM user_responses ur
         INNER JOIN diagnostic_questions dq ON ur.question_id = dq.id
         INNER JOIN diagnostic_options dop ON ur.selected_option_id = dop.id
-        INNER JOIN diagnostic_submodules ds ON dq.submodule_code = ds.submodule_code
-        INNER JOIN diagnostic_modules dm ON ds.module_code = dm.module_code
+        INNER JOIN diagnostic_submodules ds ON dq.submodule_id = ds.id
+        INNER JOIN diagnostic_modules dm ON ds.module_id = dm.id
         WHERE ur.user_id = ?
-        ORDER BY dm.display_order, ds.display_order, dq.display_order
+        ORDER BY dm.order_index, ds.order_index, dq.order_index
       `;
 
       const [rows] = await connection.execute(query, [userId]);
@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
             dm.title,
             COUNT(dq.id) as totalQuestions
           FROM diagnostic_modules dm
-          LEFT JOIN diagnostic_submodules ds ON dm.module_code = ds.module_code
-          LEFT JOIN diagnostic_questions dq ON ds.submodule_code = dq.submodule_code
+          LEFT JOIN diagnostic_submodules ds ON dm.id = ds.module_id
+          LEFT JOIN diagnostic_questions dq ON ds.id = dq.submodule_id
           GROUP BY dm.id, dm.module_code, dm.title
-          ORDER BY dm.display_order
+          ORDER BY dm.order_index
         `;
 
         const [moduleRows] = await connection.execute(modulesQuery);
@@ -102,8 +102,8 @@ export async function GET(request: NextRequest) {
         FROM user_responses ur
         INNER JOIN diagnostic_questions dq ON ur.question_id = dq.id
         INNER JOIN diagnostic_options dop ON ur.selected_option_id = dop.id
-        INNER JOIN diagnostic_submodules ds ON dq.submodule_code = ds.submodule_code
-        INNER JOIN diagnostic_modules dm ON ds.module_code = dm.module_code
+        INNER JOIN diagnostic_submodules ds ON dq.submodule_id = ds.id
+        INNER JOIN diagnostic_modules dm ON ds.module_id = dm.id
         WHERE ur.user_id = ?
       `;
 
