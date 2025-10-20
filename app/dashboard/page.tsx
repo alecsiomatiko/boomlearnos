@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import IntroScreen from "@/components/dashboard/intro-screen"
+import { DiagnosticResults } from "@/components/diagnostic/diagnostic-results"
 import { LayoutDashboard, Brain, BarChart3, Trophy, Gift, Users, MessageSquare } from "lucide-react"
 import { getUser } from "@/lib/user-manager"
 import { useAuth } from "@/contexts/auth-context"
@@ -83,12 +84,34 @@ const dashboardOptions = [
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
+  const [diagnosticResults, setDiagnosticResults] = useState<any>(null)
+  const [loadingDiagnostic, setLoadingDiagnostic] = useState(false)
   const { user: authUser } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     async function loadUser() {
       console.log('🔍 [DASHBOARD] Iniciando carga de usuario...')
+      
+      // Verificar si viene del diagnóstico completado
+      const diagnosticCompleted = searchParams?.get('diagnostic') === 'completed'
+      
+      if (diagnosticCompleted && authUser?.id) {
+        setLoadingDiagnostic(true)
+        try {
+          const response = await fetch(`/api/diagnostic/advanced?userId=${authUser.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            setDiagnosticResults(data)
+            console.log('✅ [DASHBOARD] Resultados del diagnóstico cargados')
+          }
+        } catch (error) {
+          console.error('❌ [DASHBOARD] Error cargando diagnóstico:', error)
+        } finally {
+          setLoadingDiagnostic(false)
+        }
+      }
       
       // Verificar si el usuario autenticado es admin
       if (authUser && authUser.role !== 'admin') {
@@ -104,7 +127,7 @@ export default function DashboardPage() {
       setUser(user)
     }
     loadUser()
-  }, [authUser, router])
+  }, [authUser, router, searchParams])
 
   const handleSelectControl = () => {
     router.push("/dashboard/control")
@@ -112,6 +135,29 @@ export default function DashboardPage() {
 
   const handleSelectSalud = () => {
     router.push("/dashboard/salud")
+  }
+
+  // Mostrar resultados del diagnóstico si están disponibles
+  if (diagnosticResults) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <DiagnosticResults analysis={diagnosticResults.analysis} />
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar loading si está cargando el diagnóstico
+  if (loadingDiagnostic) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando resultados del diagnóstico...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!user) {

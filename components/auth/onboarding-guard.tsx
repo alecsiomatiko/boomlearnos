@@ -48,7 +48,7 @@ export default function OnboardingGuard({ children }: OnboardingGuardProps) {
       if (user.onboardingCompleted === false) {
         if (user.onboardingStep === 1 || !user.onboardingStep) {
           console.log('🔍 [ONBOARDING GUARD] Admin redirecting to identity step')
-          router.push('/onboarding/identidad')
+          router.push('/onboarding/nuevo')
         } else if (user.onboardingStep === 2) {
           console.log('🔍 [ONBOARDING GUARD] Admin redirecting to diagnostic step')
           router.push('/onboarding/diagnostico')
@@ -59,7 +59,7 @@ export default function OnboardingGuard({ children }: OnboardingGuardProps) {
       // Si no puede acceder al dashboard, mantenerlo en onboarding
       if (user.canAccessDashboard === false) {
         console.log('🔍 [ONBOARDING GUARD] Admin cannot access dashboard, redirecting to identity')
-        router.push('/onboarding/identidad')
+        router.push('/onboarding/nuevo')
         return
       }
     }

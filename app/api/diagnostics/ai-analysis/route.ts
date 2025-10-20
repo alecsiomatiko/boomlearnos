@@ -42,16 +42,38 @@ export async function GET(request: NextRequest) {
       console.warn('[AI-ANALYSIS] No se pudo obtener plan estratégico IA:', e)
     }
 
-    // Obtener datos del onboarding
-    const onboardingQuery = `
-      SELECT diagnostic_answers, created_at
-      FROM onboarding_diagnostics
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-      LIMIT 1
-    `
+    // Obtener datos del onboarding (verificar ambas tablas)
+    let onboardingResult = null
+    
+    // Primero buscar en advanced_diagnostics
+    try {
+      const advancedQuery = `
+        SELECT diagnostic_answers, created_at
+        FROM advanced_diagnostics
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+      onboardingResult = await executeQuery(advancedQuery, [userId]) as any[]
+    } catch (error) {
+      console.log('🔍 [AI-ANALYSIS] advanced_diagnostics table not found, trying legacy table')
+    }
 
-    const onboardingResult = await executeQuery(onboardingQuery, [userId]) as any[]
+    // Si no se encuentra, buscar en la tabla legacy
+    if (!onboardingResult || onboardingResult.length === 0) {
+      try {
+        const onboardingQuery = `
+          SELECT diagnostic_answers, created_at
+          FROM onboarding_diagnostics
+          WHERE user_id = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `
+        onboardingResult = await executeQuery(onboardingQuery, [userId]) as any[]
+      } catch (error) {
+        console.log('🔍 [AI-ANALYSIS] onboarding_diagnostics table not found')
+      }
+    }
     
     if (!onboardingResult || onboardingResult.length === 0) {
       return NextResponse.json(

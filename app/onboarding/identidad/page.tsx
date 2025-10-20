@@ -25,6 +25,19 @@ import {
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { 
+  ArrowRight, 
+  ArrowLeft, 
+  User, 
+  Building2, 
+  Target, 
+  Sparkles, 
+  CheckCircle,
+  Loader2
+} from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 interface IdentityFormData {
   companyName: string
@@ -114,74 +127,26 @@ export default function IdentidadPage() {
       const result = await response.json()
 
       if (result.success) {
-        if (result.identityGenerated) {
-          // IA disponible - identidad generada exitosamente
-          setGeneratedIdentity(result.organization)
-          toast({
-            title: "¡Identidad creada con IA!",
-            description: "Tu identidad organizacional ha sido generada exitosamente.",
-          })
-          
-          // Continuar al diagnóstico
-          setTimeout(() => {
-            router.push('/onboarding/diagnostico')
-          }, 3000)
-        } else {
-          // IA no disponible - identidad pendiente
-          toast({
-            title: "Organización Creada",
-            description: "Tu organización se creó exitosamente. Continuemos con el diagnóstico.",
-            duration: 5000,
-          })
-          
-          // Ir al diagnóstico para completar el flujo
-          setTimeout(() => {
-            router.push('/onboarding/diagnostico')
-          }, 3000)
-        }
-      } else {
-        // Error en el servidor
-        console.warn('API falló, usando fallback frontend:', result.error)
-        
-        const fallbackIdentity = {
-          mission: `${formData.companyName} se dedica a ${formData.businessDescription || 'brindar servicios de alta calidad'}, enfocándose en ${formData.targetAudience || 'nuestros clientes'} y destacando por ${formData.uniqueValue || 'nuestra excelencia'}.`,
-          vision: `Ser una empresa líder en ${formData.businessType || 'nuestro sector'}, reconocida por la innovación, calidad y compromiso con el éxito de ${formData.targetAudience || 'nuestros clientes'}.`,
-          values: formData.workValues ? formData.workValues.split(',').map(v => v.trim()).slice(0, 5) : ['Excelencia', 'Integridad', 'Innovación', 'Compromiso']
-        }
-        
-        setGeneratedIdentity(fallbackIdentity)
-        
+        setGeneratedIdentity(result.organization)
         toast({
-          title: "Identidad Generada",
-          description: "Se ha creado tu identidad organizacional básica.",
+          title: "¡Identidad creada exitosamente!",
+          description: "Tu identidad organizacional ha sido generada con IA.",
         })
         
-        // Continuar al diagnóstico
+        // Pequeña pausa para mostrar el resultado antes de continuar
         setTimeout(() => {
           router.push('/onboarding/diagnostico')
         }, 3000)
+      } else {
+        throw new Error(result.error || 'Error generando identidad')
       }
     } catch (error: any) {
-      console.error('Error de conexión:', error)
-      
-      // Fallback final si hay problemas de red
-      const fallbackIdentity = {
-        mission: `${formData.companyName} se dedica a brindar servicios de alta calidad, enfocándose en la excelencia y el compromiso con nuestros clientes.`,
-        vision: `Ser una empresa líder reconocida por la innovación, calidad y compromiso con el éxito de nuestros clientes.`,
-        values: ['Excelencia', 'Integridad', 'Innovación', 'Compromiso']
-      }
-      
-      setGeneratedIdentity(fallbackIdentity)
-      
+      console.error('Error:', error)
       toast({
-        title: "Identidad Creada",
-        description: "Se ha generado una identidad básica para continuar.",
+        title: "Error",
+        description: error.message || "Error al generar la identidad organizacional",
+        variant: "destructive",
       })
-      
-      // Continuar al diagnóstico
-      setTimeout(() => {
-        router.push('/onboarding/diagnostico')
-      }, 3000)
     } finally {
       setIsLoading(false)
     }
@@ -191,13 +156,13 @@ export default function IdentidadPage() {
   const isFormValidStep2 = formData.targetAudience && formData.mainChallenges && formData.currentGoals && formData.uniqueValue
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Building2 className="h-8 w-8 text-red-600" />
+              <Building2 className="h-8 w-8 text-blue-600" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">BoomLearnOS</h1>
                 <p className="text-sm text-gray-500">Identidad Organizacional</p>
@@ -222,11 +187,11 @@ export default function IdentidadPage() {
         {currentStep === 1 && (
           <>
             {/* Step 1: Company Basic Info */}
-            <Card className="mb-6 bg-white border-gray-200 shadow-sm">
+            <Card className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <Building2 className="h-6 w-6 text-red-600" />
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Building2 className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
                     <CardTitle className="text-xl text-gray-900">Información de tu Empresa</CardTitle>
@@ -238,14 +203,14 @@ export default function IdentidadPage() {
               </CardHeader>
             </Card>
 
-            <Card className="shadow-sm mb-8 bg-white border-gray-200">
-              <CardHeader className="bg-white">
+            <Card className="shadow-sm mb-8">
+              <CardHeader>
                 <CardTitle className="text-lg text-gray-900">Datos Básicos</CardTitle>
                 <CardDescription className="text-gray-600">
                   Esta información nos ayudará a generar tu identidad única
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6 bg-white">
+              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="companyName" className="text-gray-700 font-medium">
@@ -279,7 +244,7 @@ export default function IdentidadPage() {
                     id="companySize"
                     value={formData.companySize}
                     onChange={(e) => handleInputChange('companySize', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Seleccionar</option>
                     <option value="1-10">1-10 empleados</option>
@@ -310,7 +275,7 @@ export default function IdentidadPage() {
         {currentStep === 2 && (
           <>
             {/* Step 2: Strategic Information */}
-            <Card className="mb-6 bg-white border-gray-200 shadow-sm">
+            <Card className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
@@ -326,8 +291,8 @@ export default function IdentidadPage() {
               </CardHeader>
             </Card>
 
-            <Card className="shadow-sm mb-8 bg-white border-gray-200">
-              <CardContent className="pt-6 space-y-6 bg-white">
+            <Card className="shadow-sm mb-8">
+              <CardContent className="pt-6 space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="targetAudience" className="text-gray-700 font-medium">
                     Público objetivo <Badge variant="secondary" className="ml-1 text-xs">Requerido</Badge>
@@ -397,7 +362,7 @@ export default function IdentidadPage() {
                       id="communicationStyle"
                       value={formData.communicationStyle}
                       onChange={(e) => handleInputChange('communicationStyle', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Seleccionar</option>
                       <option value="Formal">Formal y profesional</option>
@@ -415,7 +380,7 @@ export default function IdentidadPage() {
         {currentStep === 3 && (
           <>
             {/* Step 3: Generate Identity */}
-            <Card className="mb-6 bg-white border-gray-200 shadow-sm">
+            <Card className="mb-6 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
@@ -432,11 +397,11 @@ export default function IdentidadPage() {
             </Card>
 
             {!generatedIdentity ? (
-              <Card className="shadow-sm text-center mb-8 bg-white border-gray-200">
-                <CardContent className="py-12 bg-white">
+              <Card className="shadow-sm text-center mb-8">
+                <CardContent className="py-12">
                   <div className="max-w-md mx-auto">
                     <div className="mb-6">
-                      <div className="w-16 h-16 bg-red-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
                         <Sparkles className="h-8 w-8 text-white" />
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -467,7 +432,7 @@ export default function IdentidadPage() {
                       onClick={handleGenerateIdentity}
                       disabled={isLoading}
                       size="lg"
-                      className="w-full bg-red-500 hover:bg-red-600 text-white"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                     >
                       {isLoading ? (
                         <>
@@ -485,21 +450,21 @@ export default function IdentidadPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="shadow-sm mb-8 bg-white border-gray-200">
-                <CardHeader className="bg-white">
+              <Card className="shadow-sm mb-8">
+                <CardHeader>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    <CheckCircle className="h-6 w-6 text-green-600" />
                     <CardTitle className="text-xl text-gray-900">¡Identidad Generada Exitosamente!</CardTitle>
                   </div>
                   <CardDescription className="text-gray-600">
                     Tu identidad organizacional única ha sido creada
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6 bg-white">
+                <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                    <div className="bg-red-50 rounded-lg p-4">
-                      <h4 className="font-semibold text-red-900 mb-2">Misión</h4>
-                      <p className="text-red-800">{generatedIdentity.mission}</p>
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">Misión</h4>
+                      <p className="text-blue-800">{generatedIdentity.mission}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4">
                       <h4 className="font-semibold text-green-900 mb-2">Visión</h4>
@@ -520,7 +485,7 @@ export default function IdentidadPage() {
                   
                   <div className="bg-gray-50 rounded-lg p-4 text-center">
                     <p className="text-gray-600 mb-2">Continuando al diagnóstico empresarial en 3 segundos...</p>
-                    <div className="animate-pulse text-red-600">Preparando siguiente paso...</div>
+                    <div className="animate-pulse text-blue-600">Preparando siguiente paso...</div>
                   </div>
                 </CardContent>
               </Card>
@@ -552,7 +517,7 @@ export default function IdentidadPage() {
             <Button
               onClick={handleNextStep}
               disabled={(currentStep === 1 && !isFormValidStep1) || (currentStep === 2 && !isFormValidStep2)}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
             >
               Siguiente
               <ArrowRight className="h-4 w-4" />
@@ -562,7 +527,7 @@ export default function IdentidadPage() {
           {currentStep === 3 && generatedIdentity && (
             <Button
               onClick={() => router.push('/onboarding/diagnostico')}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600"
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
               Continuar al diagnóstico
               <ArrowRight className="h-4 w-4" />

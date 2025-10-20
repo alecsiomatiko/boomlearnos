@@ -2,25 +2,44 @@ import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
 
 export async function GET(request: NextRequest) {
+  console.log('� [DIAGNOSTICS API] ================ ENDPOINT LLAMADO ================')
+  console.log('�🔍 [DIAGNOSTICS] Endpoint /api/diagnostics/overview llamado')
+  
   try {
-    // Obtener el usuario actual
+    // Obtener userId de la URL
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    
+    console.log('🔍 [DIAGNOSTICS] UserId recibido:', userId)
+
+    if (!userId) {
+      console.log('❌ [DIAGNOSTICS] No se proporcionó userId')
+      return NextResponse.json(
+        { success: false, error: 'User ID requerido' },
+        { status: 400 }
+      )
+    }
+
+    console.log('🔍 [DIAGNOSTICS] Obteniendo overview para usuario:', userId)
+
+    // Obtener el usuario específico
     const userQuery = `
       SELECT id, first_name, last_name, email, name
       FROM users 
-      ORDER BY created_at DESC
+      WHERE id = ?
       LIMIT 1
     `
     
-    const userResult = await executeQuery(userQuery, []) as any[]
+    const userResult = await executeQuery(userQuery, [userId]) as any[]
     if (!userResult || userResult.length === 0) {
+      console.log('❌ [DIAGNOSTICS] Usuario no encontrado:', userId)
       return NextResponse.json(
         { success: false, error: 'Usuario no encontrado' },
         { status: 404 }
       )
     }
     
-    const userId = userResult[0].id
-    console.log('🔍 [DIAGNOSTICS] Obteniendo overview para usuario:', userId)
+    console.log('✅ [DIAGNOSTICS] Usuario encontrado:', userResult[0].first_name, userResult[0].last_name)
 
     // Obtener datos de la organización usando owner_id
     const orgQuery = `
@@ -38,19 +57,52 @@ export async function GET(request: NextRequest) {
     const orgResult = await executeQuery(orgQuery, [userId]) as any[]
     const organization = orgResult && orgResult.length > 0 ? orgResult[0] : null
 
-    // Obtener diagnóstico de onboarding
-    const onboardingQuery = `
+    // Obtener diagnóstico de onboarding (verificar ambas tablas)
+    let onboardingData = null
+    
+    // Primero verificar la nueva tabla advanced_diagnostics
+    const advancedQuery = `
       SELECT 
         diagnostic_answers,
         created_at
-      FROM onboarding_diagnostics
+      FROM advanced_diagnostics
       WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT 1
     `
 
-    const onboardingResult = await executeQuery(onboardingQuery, [userId]) as any[]
-    const onboardingData = onboardingResult && onboardingResult.length > 0 ? onboardingResult[0] : null
+    try {
+      const advancedResult = await executeQuery(advancedQuery, [userId]) as any[]
+      console.log('🔍 [DIAGNOSTICS] Resultado advanced_diagnostics:', advancedResult?.length || 0, 'registros')
+      if (advancedResult && advancedResult.length > 0) {
+        onboardingData = advancedResult[0]
+        console.log('✅ [DIAGNOSTICS] Diagnóstico avanzado encontrado, creado:', onboardingData.created_at)
+      }
+    } catch (error) {
+      console.log('🔍 [DIAGNOSTICS] advanced_diagnostics table not found, checking legacy table')
+    }
+
+    // Si no se encuentra en la nueva tabla, buscar en la tabla legacy
+    if (!onboardingData) {
+      const onboardingQuery = `
+        SELECT 
+          diagnostic_answers,
+          created_at
+        FROM onboarding_diagnostics
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+
+      try {
+        const onboardingResult = await executeQuery(onboardingQuery, [userId]) as any[]
+        if (onboardingResult && onboardingResult.length > 0) {
+          onboardingData = onboardingResult[0]
+        }
+      } catch (error) {
+        console.log('🔍 [DIAGNOSTICS] onboarding_diagnostics table not found')
+      }
+    }
 
     // Simular datos del mega diagnóstico (por ahora)
     const megaData: any[] = []
@@ -87,6 +139,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log('📋 [DIAGNOSTICS] Respuesta final - Onboarding completed:', diagnostics.onboardingDiagnostic.completed)
     console.log('✅ [DIAGNOSTICS] Overview obtenido exitosamente')
 
     return NextResponse.json({

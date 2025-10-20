@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXT_PUBLIC_JWT_SECRET || 'fallback-secret-key';
 
 interface RegisterRequestData {
   email: string;
@@ -126,8 +129,23 @@ export async function POST(request: NextRequest) {
             [user.id, orgName, user.id]
           );
         }
+
+        // ✅ GENERAR JWT TOKEN PARA AUTO-LOGIN
+        const token = jwt.sign(
+          { 
+            sub: user.id,
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            organizationId: null // Se establecerá después del onboarding
+          },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        
         const userResponse = {
           success: true,
+          token, // ✅ Incluir token para auto-login
           user: {
             id: user.id,
             email: user.email,
@@ -143,7 +161,7 @@ export async function POST(request: NextRequest) {
             badges: [],
           }
         };
-        console.log('✅ [BACKEND DEBUG] Enviando respuesta exitosa:', userResponse)
+        console.log('✅ [BACKEND DEBUG] Enviando respuesta exitosa con token')
         return NextResponse.json(userResponse)
       } else {
         console.log('❌ [BACKEND DEBUG] No se pudo obtener el usuario recién creado')

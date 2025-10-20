@@ -76,6 +76,15 @@ export async function registerUser(userData: RegisterData): Promise<AuthUser | n
     }
 
     console.log('✅ [USER SERVICE] Usuario registrado exitosamente con datos completos:', data.user)
+    
+    // ✅ GUARDAR TOKEN JWT PARA AUTO-LOGIN
+    if (data.token) {
+      console.log('💾 [USER SERVICE] Guardando token de autenticación')
+      localStorage.setItem('auth_token', data.token);
+    } else {
+      console.log('⚠️ [USER SERVICE] No se recibió token en el registro')
+    }
+    
     return data.user
   } catch (error) {
     console.error('❌ [USER SERVICE] Error registering user:', error)

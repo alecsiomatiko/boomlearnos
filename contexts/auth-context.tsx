@@ -144,9 +144,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('🔍 [AUTH CONTEXT] Respuesta de registerUser:', newUser)
 
       if (newUser) {
-        console.log('✅ [AUTH CONTEXT] Usuario registrado exitosamente, guardando en localStorage')
+        console.log('✅ [AUTH CONTEXT] Usuario registrado exitosamente, configurando sesión...')
+        
+        // 🧹 LIMPIAR SESIÓN ANTERIOR
+        console.log('🧹 [AUTH CONTEXT] Limpiando sesión anterior...')
+        localStorage.removeItem("auth_user")
+        localStorage.removeItem("auth_token")
+        
+        // ⏱️ ESPERAR UN MOMENTO PARA QUE SE LIMPIE
+        await new Promise(resolve => setTimeout(resolve, 50))
+        
+        // ✅ ESTABLECER NUEVA SESIÓN
         setUser(newUser)
         localStorage.setItem("auth_user", JSON.stringify(newUser))
+        
+        // 🔑 VERIFICAR TOKEN
+        const savedToken = localStorage.getItem('auth_token')
+        console.log('🔑 [AUTH CONTEXT] Token después del registro:', savedToken ? 'EXISTE' : 'NO EXISTE')
+        console.log('👤 [AUTH CONTEXT] Usuario establecido:', newUser.id, newUser.email)
+        
+        // ✅ NO RECARGAR - DEJAR QUE LA PÁGINA MANEJE LA REDIRECCIÓN
+        console.log('✅ [AUTH CONTEXT] Sesión configurada, listo para redirección')
+        
         return true
       }
 

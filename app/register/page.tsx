@@ -24,6 +24,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -92,11 +93,18 @@ export default function RegisterPage() {
 
       if (success) {
         console.log('✅ [REGISTER PAGE] Registro exitoso, redirigiendo al onboarding...')
+        setIsRedirecting(true)
         toast({
           title: "¡Pre-registro exitoso!",
-          description: "Tu cuenta de administrador ha sido creada correctamente.",
+          description: "Redirigiendo al onboarding... 🚀",
         })
-        router.push("/onboarding/identidad")
+        
+        // ⏱️ ESPERAR UN MOMENTO PARA QUE EL CONTEXTO SE ACTUALICE
+        console.log('⏱️ [REGISTER PAGE] Esperando actualización del contexto...')
+        setTimeout(() => {
+          console.log('🚀 [REGISTER PAGE] Redirigiendo al onboarding...')
+          router.push("/onboarding/nuevo")
+        }, 500)
       } else {
         console.log('❌ [REGISTER PAGE] Registro falló, success es false')
         toast({
@@ -307,10 +315,10 @@ export default function RegisterPage() {
               <div className="pt-6">
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || isRedirecting}
                   className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-4 rounded-xl transition-colors text-base disabled:opacity-50"
                 >
-                  {isLoading ? "REGISTRANDO..." : "REGISTRATE"}
+                  {isRedirecting ? "REDIRIGIENDO... 🚀" : isLoading ? "REGISTRANDO..." : "REGISTRATE"}
                 </button>
               </div>
             </form>

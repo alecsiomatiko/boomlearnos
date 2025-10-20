@@ -6,32 +6,50 @@ import { getOrgIdForRequest } from '@/lib/server/org-utils'
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 [PROFILE] Obteniendo perfil - iniciando...')
+    console.log('🔍 [PROFILE] URL completa:', request.url)
+    console.log('🔍 [PROFILE] Headers:', Object.fromEntries(request.headers.entries()))
 
     // ✅ AUTENTICACIÓN
     const currentUser = await getCurrentUser(request);
+    console.log('🔍 [PROFILE] Usuario autenticado:', currentUser ? `${currentUser.id} (${currentUser.email})` : 'null')
+    
     if (!currentUser) {
+      console.log('❌ [PROFILE] No autorizado - no hay usuario autenticado')
       return NextResponse.json({
         success: false,
         error: 'No autorizado'
       }, { status: 401 });
     }
 
-    const organizationId = await getOrgIdForRequest(request, { allowHeaderFallback: false });
-    if (!organizationId) {
-      return NextResponse.json({
-        success: false,
-        error: 'No autorizado: falta organization_id'
-      }, { status: 401 });
-    }
-
     // Obtener userId de los query parameters o usar el del usuario autenticado
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId') || currentUser.id;
+    const requestedUserId = searchParams.get('userId')
+    const userId = requestedUserId || currentUser.id;
+    
+    // ✅ VERIFICACIÓN ESPECIAL PARA ONBOARDING
+    // Si el usuario está pidiendo su propio perfil, permitir sin filtro de organización
+    const isOwnProfile = userId === currentUser.id;
+    
+    console.log('🔍 [PROFILE] UserId solicitado:', requestedUserId)
+    console.log('🔍 [PROFILE] UserId final:', userId)
+    console.log('🔍 [PROFILE] Es perfil propio:', isOwnProfile)
+    console.log('🔍 [PROFILE] Usuario autenticado:', currentUser.id)
+    
+    if (!isOwnProfile) {
+      // Para perfiles de otros usuarios, verificar organización
+      const organizationId = await getOrgIdForRequest(request, { allowHeaderFallback: false });
+      if (!organizationId) {
+        return NextResponse.json({
+          success: false,
+          error: 'No autorizado: falta organization_id'
+        }, { status: 401 });
+      }
+    }
 
     console.log('🔍 [PROFILE] Ejecutando consulta para userId:', userId)
 
-    // Consulta SQL bien formada - FILTRAR POR organization_id
-    const query = `
+    // Consulta SQL - sin filtro de organización para el propio perfil durante onboarding
+    let query = `
       SELECT 
         u.id,
         u.first_name,
@@ -45,6 +63,8 @@ export async function GET(request: NextRequest) {
         u.role,
         u.total_gems,
         u.first_login,
+        u.onboarding_step,
+        u.onboarding_completed,
         org.id as org_id,
         org.name as company_name,
         org.business_type,
@@ -56,11 +76,33 @@ export async function GET(request: NextRequest) {
         org.values_json as 'values'
       FROM users u
       LEFT JOIN organizations org ON u.organization_id = org.id
-      WHERE u.id = ? AND u.organization_id = ?
-    `;
-    const result = await executeQuery(query, [userId, organizationId]) as any[];
+      WHERE u.id = ?`;
+    
+    let queryParams = [userId];
+    
+    // Solo agregar filtro de organización si no es el propio perfil
+    if (!isOwnProfile) {
+      const organizationId = await getOrgIdForRequest(request, { allowHeaderFallback: false });
+      if (organizationId) {
+        query += ` AND u.organization_id = ?`;
+        queryParams.push(organizationId);
+      }
+    }
+    
+    console.log('🔍 [PROFILE] Es perfil propio:', isOwnProfile)
+    console.log('🔍 [PROFILE] Query SQL final:', query)
+    console.log('🔍 [PROFILE] Parámetros:', queryParams)
+    
+    const result = await executeQuery(query, queryParams) as any[];
     
     console.log('🔍 [PROFILE] Resultado consulta:', result?.length || 0, 'registros')
+    if (result && result.length > 0) {
+      console.log('👤 [PROFILE] Usuario encontrado:', {
+        id: result[0].id,
+        name: `${result[0].first_name} ${result[0].last_name}`,
+        onboarding_completed: result[0].onboarding_completed
+      })
+    }
     
     if (!result || result.length === 0) {
       console.log('❌ [PROFILE] No se encontró usuario completado')

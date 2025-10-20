@@ -61,10 +61,17 @@ export default function MegaDiagnosticoPage() {
         setModules(diagnosticModules)
 
         // Cargar overview de diagnósticos
-        const overviewResponse = await fetch('/api/diagnostics/overview')
+        console.log('🔍 [MEGA-DIAGNOSTICO] Cargando overview para usuario:', currentUser?.id)
+        const overviewResponse = await fetch(`/api/diagnostics/overview?userId=${currentUser?.id}`)
+        console.log('📡 [MEGA-DIAGNOSTICO] Response status:', overviewResponse.status)
+        console.log('📡 [MEGA-DIAGNOSTICO] Response headers:', Object.fromEntries(overviewResponse.headers.entries()))
         const overviewData = await overviewResponse.json()
+        console.log('📋 [MEGA-DIAGNOSTICO] Respuesta overview:', JSON.stringify(overviewData, null, 2))
         if (overviewData.success) {
           setDiagnosticOverview(overviewData.diagnostics)
+          console.log('✅ [MEGA-DIAGNOSTICO] DiagnosticOverview actualizado:', JSON.stringify(overviewData.diagnostics.onboardingDiagnostic, null, 2))
+        } else {
+          console.log('❌ [MEGA-DIAGNOSTICO] Error en la respuesta:', overviewData)
         }
 
         // Cargar progreso real de cada módulo desde las respuestas guardadas
