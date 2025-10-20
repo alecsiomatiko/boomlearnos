@@ -103,13 +103,35 @@ export async function POST(request: NextRequest) {
     const profileInfo = extractUserProfileInfo(answers, user[0])
     console.log('📋 [IMPROVED ONBOARDING] Información del perfil a guardar:', profileInfo)
     
-    // 🔑 AGREGAR PERMISOS BÁSICOS PARA QUE PUEDA VER TAREAS Y EQUIPO
-    const basicPermissions = JSON.stringify({
-      team: true,      // Puede ver el equipo
-      tasks: true,     // Puede ver y gestionar tareas
-      dashboard: true  // Puede acceder al dashboard completo
-    })
-    console.log('🔑 [IMPROVED ONBOARDING] Asignando permisos básicos:', basicPermissions)
+    // 🔑 ASIGNAR PERMISOS SEGÚN EL ROL DEL USUARIO
+    const userRole = user[0].role || 'user'
+    let permissions = {}
+    
+    if (userRole === 'admin') {
+      // 👑 ADMIN: Permisos completos
+      permissions = {
+        team: true,         // Gestión completa de equipo
+        tasks: true,        // Gestión completa de tareas
+        dashboard: true,    // Dashboard completo
+        analytics: true,    // Acceso a analytics
+        settings: true,     // Configuración de organización
+        users: true,        // Gestión de usuarios
+        billing: true,      // Facturación
+        admin: true         // Panel de administración
+      }
+      console.log('👑 [IMPROVED ONBOARDING] Usuario ADMIN detectado - asignando permisos completos')
+    } else {
+      // 👤 USER: Permisos básicos
+      permissions = {
+        team: true,      // Puede ver el equipo
+        tasks: true,     // Puede ver y gestionar tareas
+        dashboard: true  // Puede acceder al dashboard completo
+      }
+      console.log('� [IMPROVED ONBOARDING] Usuario básico - asignando permisos estándar')
+    }
+    
+    const permissionsJson = JSON.stringify(permissions)
+    console.log('🔑 [IMPROVED ONBOARDING] Permisos asignados:', permissionsJson)
     
     await executeQuery(`
       UPDATE users 
@@ -132,7 +154,7 @@ export async function POST(request: NextRequest) {
       profileInfo.position,
       profileInfo.city,
       profileInfo.phone,
-      basicPermissions,
+      permissionsJson,
       userId
     ])
 

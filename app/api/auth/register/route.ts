@@ -65,8 +65,21 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Permitir rol personalizado (admin/user) si viene del frontend, por defecto 'user'
-    const role = userData.role && (userData.role === 'admin' || userData.role === 'user') ? userData.role : 'user';
+    // 🔑 DETECTAR SI ES EL PRIMER USUARIO (ADMIN AUTOMÁTICO)
+    console.log('🔍 [BACKEND DEBUG] Verificando si es el primer usuario...')
+    const userCount: any = await executeQuery('SELECT COUNT(*) as total FROM users', [])
+    const isFirstUser = Array.isArray(userCount) && userCount[0]?.total === 0
+    
+    // El primer usuario siempre es admin, otros pueden especificar rol
+    let role = 'user' // default
+    if (isFirstUser) {
+      role = 'admin'
+      console.log('👑 [BACKEND DEBUG] PRIMER USUARIO detectado - asignando rol ADMIN automáticamente')
+    } else if (userData.role && (userData.role === 'admin' || userData.role === 'user')) {
+      role = userData.role
+      console.log('🔍 [BACKEND DEBUG] Rol especificado:', role)
+    }
+
     const result: any = await executeQuery(`
       INSERT INTO users (
         email, 
