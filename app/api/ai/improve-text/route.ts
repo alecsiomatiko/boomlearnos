@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient, isOpenAIAvailable } from '@/lib/openai-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,17 +12,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const openaiKey = process.env.OPENAI_API_KEY
-    if (!openaiKey) {
-      return NextResponse.json({
-        success: false,
-        error: 'OpenAI no configurado'
+    // 🤖 Verificar disponibilidad de OpenAI
+    if (!isOpenAIAvailable()) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'OpenAI no está disponible' 
       }, { status: 500 })
     }
 
-    const openai = new OpenAI({
-      apiKey: openaiKey,
-    })
+    const openai = getOpenAIClient()
 
     // Diferentes estilos de mejora
     const stylePrompts = {

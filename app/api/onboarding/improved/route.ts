@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery, generateUUID } from '@/lib/server/mysql'
-import OpenAI from 'openai'
+import { getOpenAIClient, isOpenAIAvailable } from '@/lib/openai-client'
 import jwt from 'jsonwebtoken'
 
 export async function POST(request: NextRequest) {
@@ -205,15 +205,12 @@ export async function POST(request: NextRequest) {
 
 // Función para generar identidad avanzada con las respuestas del onboarding
 async function generateAdvancedIdentityWithAI(answers: Record<string, any>) {
-  const openaiKey = process.env.OPENAI_API_KEY
-  if (!openaiKey) {
+  // 🤖 Verificar disponibilidad de OpenAI
+  if (!isOpenAIAvailable()) {
     throw new Error('OpenAI API key no configurada')
   }
 
-  const openai = new OpenAI({
-    apiKey: openaiKey,
-    timeout: 30000
-  })
+  const openai = getOpenAIClient()
 
   // Construir un prompt muy detallado basado en las respuestas
   const prompt = `

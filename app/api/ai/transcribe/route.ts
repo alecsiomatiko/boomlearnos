@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient, isOpenAIAvailable } from '@/lib/openai-client'
 
 export async function POST(request: NextRequest) {
   try {
-    const openaiKey = process.env.OPENAI_API_KEY
-    if (!openaiKey) {
+    // 🤖 Verificar disponibilidad de OpenAI
+    if (!isOpenAIAvailable()) {
       return NextResponse.json({
         success: false,
         error: 'OpenAI no configurado'
       }, { status: 500 })
     }
 
-    const openai = new OpenAI({
-      apiKey: openaiKey,
-    })
+    const openai = getOpenAIClient()
 
     // Obtener el archivo de audio del FormData
     const formData = await request.formData()

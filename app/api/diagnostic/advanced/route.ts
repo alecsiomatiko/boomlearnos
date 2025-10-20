@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 import mysql from 'mysql2/promise'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import { getOpenAIClient, isOpenAIAvailable } from '@/lib/openai-client'
 
 // Configuración de la base de datos
 const dbConfig = {
@@ -169,6 +165,9 @@ Por favor, proporciona un análisis profundo y accionable en formato JSON con la
 }
 `
 
+  // 🤖 Obtener cliente OpenAI cuando sea necesario
+  const openai = getOpenAIClient()
+  
   const completion = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages: [
