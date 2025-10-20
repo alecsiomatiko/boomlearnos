@@ -20,24 +20,12 @@ import {
   Eye,
   Heart,
   CheckCircle2,
+  CheckCircle,
   Loader2,
   Users
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { 
-  ArrowRight, 
-  ArrowLeft, 
-  User, 
-  Building2, 
-  Target, 
-  Sparkles, 
-  CheckCircle,
-  Loader2
-} from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
 
 interface IdentityFormData {
   companyName: string
