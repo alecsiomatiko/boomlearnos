@@ -4,26 +4,13 @@ import type React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Zap, BrainCircuit, Target, BarChart, Menu } from "lucide-react"
+import { Zap, Menu } from "lucide-react"
 import { motion } from "framer-motion"
 import { Logo } from "@/components/logo"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
 export default function LandingPage() {
-  const featureVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.15,
-        duration: 0.5,
-      },
-    }),
-  }
-
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-brand-red text-white">
       <div className="absolute inset-0 z-0">
@@ -45,12 +32,13 @@ export default function LandingPage() {
       >
         <Logo variant="light" />
         <nav className="hidden items-center gap-6 text-lg font-medium md:flex">
-          <Link href="#features" className="transition-colors hover:text-red-200">
-            Características
-          </Link>
-          <Link href="#testimonials" className="transition-colors hover:text-red-200">
-            Testimonios
-          </Link>
+          <Button
+            variant="ghost"
+            className="transition-all duration-300 hover:bg-white/10 liquid-glass-effect border-transparent hover:border-white/20"
+            asChild
+          >
+            <Link href="/login">Iniciar Sesión</Link>
+          </Button>
         </nav>
         <div className="hidden items-center gap-4 md:flex">
           <Button
@@ -77,12 +65,6 @@ export default function LandingPage() {
             <SheetContent side="left" className={cn("w-[300px] sm:w-[400px]", "liquid-glass-effect")}>
               <nav className="flex flex-col gap-6 text-lg font-medium mt-8">
                 <Logo variant="light" />
-                <Link href="#features" className="transition-colors hover:text-red-200">
-                  Características
-                </Link>
-                <Link href="#testimonials" className="transition-colors hover:text-red-200">
-                  Testimonios
-                </Link>
                 <div className="flex flex-col gap-4 mt-4">
                   <Button variant="ghost" asChild>
                     <Link href="/login">Iniciar Sesión</Link>
@@ -138,87 +120,9 @@ export default function LandingPage() {
           </motion.div>
         </section>
 
-        <section id="features" className="py-24 sm:py-32 bg-brand-dark/20 backdrop-blur-sm">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <h2 className="text-base font-semibold leading-7 text-red-300">Todo lo que necesitas</h2>
-              <p className="mt-2 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Una plataforma, control total
-              </p>
-            </div>
-            <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <GlassCard
-                icon={<BrainCircuit className="h-8 w-8 text-brand-red" />}
-                title="Mega Diagnóstico"
-                description="Obtén una radiografía completa de tu negocio. Identifica fortalezas, debilidades y oportunidades con nuestra metodología única."
-              />
-              <GlassCard
-                icon={<Target className="h-8 w-8 text-brand-red" />}
-                title="Panel de Control Gamificado"
-                description="Visualiza tu progreso, gestiona misiones diarias y mantén el pulso de tus objetivos en un solo lugar."
-              />
-              <GlassCard
-                icon={<BarChart className="h-8 w-8 text-brand-red" />}
-                title="Salud Financiera con IA"
-                description="Analiza tus finanzas con inteligencia artificial. Toma decisiones más inteligentes y asegura la rentabilidad de tu negocio."
-              />
-            </div>
-          </div>
-        </section>
 
-        <section id="testimonials" className="w-full py-20 md:py-32">
-          <div className="container mx-auto px-4 md:px-6">
-            <h2 className="mb-16 text-center text-4xl font-bold tracking-tighter sm:text-5xl">
-              Amado por equipos de alto rendimiento
-            </h2>
-            <div className="grid gap-8 lg:grid-cols-3">
-              {[
-                {
-                  name: "Ana Sofía",
-                  role: "CEO, TechCorp",
-                  quote:
-                    "Kalabasboom transformó nuestra forma de trabajar. La productividad se disparó y el equipo está más comprometido que nunca.",
-                  avatar: "/placeholder.svg?width=64&height=64",
-                },
-                {
-                  name: "Carlos Gutiérrez",
-                  role: "Director, InnovateCo",
-                  quote:
-                    "Es el sistema operativo para negocios que siempre soñé. Intuitivo, potente y los resultados hablan por sí solos.",
-                  avatar: "/placeholder.svg?width=64&height=64",
-                },
-                {
-                  name: "Elena Rivera",
-                  role: "Líder de Proyecto",
-                  quote:
-                    "Nunca había visto a mi equipo tan alineado. Las misiones diarias son un cambio de juego para la motivación.",
-                  avatar: "/placeholder.svg?width=64&height=64",
-                },
-              ].map((testimonial, i) => (
-                <motion.div key={i} custom={i} variants={featureVariants} initial="hidden" whileInView="visible">
-                  <Card className={cn("h-full text-white", "liquid-glass-effect")}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center">
-                        <Image
-                          src={testimonial.avatar || "/placeholder.svg"}
-                          alt={testimonial.name}
-                          width={64}
-                          height={64}
-                          className="rounded-full"
-                        />
-                        <div className="ml-4">
-                          <p className="font-bold">{testimonial.name}</p>
-                          <p className="text-sm text-red-200">{testimonial.role}</p>
-                        </div>
-                      </div>
-                      <p className="mt-4 italic">"{testimonial.quote}"</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+
+
       </main>
 
       <footer className="w-full bg-brand-dark py-8">
@@ -230,19 +134,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-  )
-}
-
-function GlassCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-  return (
-    <Card className={cn("text-white", "liquid-glass-effect")}>
-      <CardHeader>
-        <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-brand-red/10 mb-4">{icon}</div>
-        <CardTitle className="font-display text-xl font-bold text-white">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-gray-400">{description}</p>
-      </CardContent>
-    </Card>
   )
 }

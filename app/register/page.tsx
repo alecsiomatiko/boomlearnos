@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { AccessCodeInput } from "@/components/access-code-input"
 
 export default function RegisterPage() {
   const router = useRouter()
   const { register } = useAuth()
   const { toast } = useToast()
   const [formData, setFormData] = useState({
+    accessCode: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -25,6 +27,7 @@ export default function RegisterPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isAccessCodeValid, setIsAccessCodeValid] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -38,10 +41,21 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     // Validation
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.city || !formData.businessType || !formData.position || !formData.organizationName || !formData.password || !formData.confirmPassword) {
+    if (!formData.accessCode || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.city || !formData.businessType || !formData.position || !formData.organizationName || !formData.password || !formData.confirmPassword) {
       toast({
         title: "Error de registro",
-        description: "Todos los campos son obligatorios.",
+        description: "Todos los campos son obligatorios, incluyendo el código de acceso.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
+    // Verificar que el código de acceso sea válido
+    if (!isAccessCodeValid) {
+      toast({
+        title: "Código de acceso inválido",
+        description: "El código ingresado no es válido o ya fue utilizado.",
         variant: "destructive",
       })
       setIsLoading(false)
@@ -142,6 +156,13 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="px-8 py-8">
             <form onSubmit={handleRegister} className="space-y-6">
+              {/* Código de Acceso */}
+              <AccessCodeInput
+                value={formData.accessCode}
+                onChange={(value) => setFormData(prev => ({ ...prev, accessCode: value }))}
+                onValidationChange={setIsAccessCodeValid}
+              />
+              
               {/* Nombre de la organización */}
               <div className="space-y-2">
                 <label htmlFor="organizationName" className="block text-gray-800 text-sm font-medium">

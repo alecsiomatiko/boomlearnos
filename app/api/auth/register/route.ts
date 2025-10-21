@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
     const userData = await request.json()
     console.log('🔍 [BACKEND DEBUG] Datos recibidos:', userData)
 
-    // Validación de campos requeridos
-    const requiredFields = ['email', 'password', 'firstName', 'lastName']
+    // Validación de campos requeridos (incluyendo accessCode)
+    const requiredFields = ['accessCode', 'email', 'password', 'firstName', 'lastName']
     const missingFields = requiredFields.filter(field => !userData[field])
 
     if (missingFields.length > 0) {
@@ -30,6 +30,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: `Campos requeridos faltantes: ${missingFields.join(', ')}`
+      }, { status: 400 })
+    }
+
+    // Validar código de acceso PRIMERO
+    const accessCodeCheck = await executeQuery(
+      "SELECT id, is_used, used_by_user_id FROM access_codes WHERE code = ?",
+      [userData.accessCode.toUpperCase()]
+    ) as any[]
+
+    if (accessCodeCheck.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Código de acceso inválido'
+      }, { status: 400 })
+    }
+
+    const accessCode = accessCodeCheck[0]
+    if (accessCode.is_used) {
+      return NextResponse.json({
+        success: false,
+        error: 'Este código de acceso ya ha sido utilizado'
       }, { status: 400 })
     }
 
@@ -134,6 +155,14 @@ export async function POST(request: NextRequest) {
       const newUserArr = await executeQuery('SELECT * FROM users WHERE email = ?', [userData.email]) as any[];
       if (newUserArr && newUserArr.length > 0) {
         const user = newUserArr[0];
+        
+        // Marcar el código de acceso como usado
+        await executeQuery(
+          "UPDATE access_codes SET is_used = TRUE, used_by_user_id = ?, used_at = NOW() WHERE code = ?",
+          [user.id, userData.accessCode.toUpperCase()]
+        )
+        console.log('✅ [BACKEND DEBUG] Código de acceso marcado como usado')
+        
         // Si es admin, crear organización automáticamente
         if (user.role === 'admin') {
           const orgName = userData.organizationName || `${user.first_name} ${user.last_name} Org`;
