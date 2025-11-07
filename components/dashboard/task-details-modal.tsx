@@ -1,3 +1,38 @@
+/**
+ * TaskDetailsModal - Modal de detalles y gestion de tareas
+ * 
+ * Modal completo para ver y gestionar una tarea individual.
+ * Permite actualizar progreso, agregar comentarios, completar y eliminar.
+ * 
+ * @param task - Tarea a mostrar (null cierra el modal)
+ * @param isOpen - Estado de apertura del modal
+ * @param onClose - Callback al cerrar el modal
+ * @param onDelete - Callback al eliminar la tarea
+ * @param onComplete - Callback al completar la tarea
+ * @param onProgressUpdate - Callback al actualizar el progreso
+ * @param onAddComment - Callback al agregar un comentario
+ * 
+ * Features:
+ * - Vista completa de detalles de la tarea
+ * - Slider para actualizar progreso (0-100%)
+ * - Seccion de comentarios con timeline
+ * - Boton de completar con animacion de recompensa
+ * - Boton de eliminar con confirmacion
+ * - Badges de prioridad y categoria
+ * - Fecha limite con countdown visual
+ * - Avatar del usuario asignado
+ * 
+ * @example
+ * ```tsx
+ * <TaskDetailsModal
+ *   task={selectedTask}
+ *   isOpen={isModalOpen}
+ *   onClose={() => setIsModalOpen(false)}
+ *   onComplete={(id) => handleComplete(id)}
+ *   onProgressUpdate={(id, progress) => updateProgress(id, progress)}
+ * />
+ * ```
+ */
 "use client"
 
 import { useState } from "react"

@@ -1,3 +1,12 @@
+/**
+ * API de Tareas - Sistema de gestion de tareas con gamificacion
+ * 
+ * Endpoints para CRUD de tareas con sistema de gemas, prioridades,
+ * asignacion a usuarios y tracking de progreso.
+ * 
+ * Todas las operaciones filtradas por organization_id (multi-tenancy).
+ */
+
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/mysql"
 import { getOrCreateDefaultUser as getOrCreateDefaultUserFromServer, getMockTasks as getMockTasksFromServer, type Task } from "@/lib/server/mysql"
@@ -6,6 +15,37 @@ import { calculateGems, awardGems } from "@/lib/gems-system"
 import { getCurrentUser } from "@/lib/server/auth"
 import { getOrgIdForRequest } from "@/lib/server/org-utils"
 
+/**
+ * GET /api/tasks
+ * 
+ * Obtiene todas las tareas del usuario actual filtradas por organizacion.
+ * 
+ * Headers:
+ * @header Authorization - Bearer token (requerido)
+ * 
+ * Query Parameters:
+ * @param userId - ID del usuario (opcional, default: usuario autenticado)
+ * @param status - Filtro por estado: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+ * 
+ * Logica de filtrado:
+ * - Retorna tareas donde user es creator, assignee o owner
+ * - Siempre filtrado por organization_id del usuario
+ * - Ordenadas por due_date ASC, created_at DESC
+ * 
+ * Response:
+ * {
+ *   success: true,
+ *   data: {
+ *     tasks: [{
+ *       id, title, description, category, difficulty,
+ *       priority, status, dueDate, estimatedHours,
+ *       actualHours, completionPercentage, gems,
+ *       assignedTo, createdBy, completed, completedAt,
+ *       createdAt, updatedAt, progress
+ *     }]
+ *   }
+ * }
+ */
 export async function GET(request: NextRequest) {
   try {
     // ✅ AUTENTICACIÓN Y FILTRADO POR ORGANIZACIÓN
@@ -73,6 +113,39 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * POST /api/tasks
+ * 
+ * Crea una nueva tarea en la organizacion del usuario.
+ * 
+ * Headers:
+ * @header Authorization - Bearer token (requerido)
+ * 
+ * Request Body:
+ * {
+ *   title: string,              // Titulo de la tarea (requerido)
+ *   description?: string,       // Descripcion detallada
+ *   category: string,           // Categoria (requerido)
+ *   difficulty: string,         // 'easy' | 'medium' | 'hard' | 'expert' (requerido)
+ *   priority?: string,          // 'low' | 'medium' | 'high' (default: 'medium')
+ *   dueDate: string,            // Fecha limite ISO (requerido)
+ *   estimatedHours?: number,    // Horas estimadas (default: 1)
+ *   assignedTo?: string,        // ID usuario asignado (default: creador)
+ *   createdBy?: string          // ID usuario creador (default: autenticado)
+ * }
+ * 
+ * Logica:
+ * 1. Valida campos requeridos
+ * 2. Genera UUID para la tarea
+ * 3. Inserta en BD con organization_id del usuario
+ * 4. Estado inicial: 'pending', progress: 0%, gems: 0
+ * 
+ * Response:
+ * {
+ *   success: true,
+ *   data: { taskId: string }
+ * }
+ */
 export async function POST(request: NextRequest) {
   try {
     // ✅ AUTENTICACIÓN Y FILTRADO POR ORGANIZACIÓN
@@ -158,6 +231,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * PUT /api/tasks
+ * 
+ * Actualiza el estado y progreso de una tarea existente.
+ * 
+ * Headers:
+ * @header Authorization - Bearer token (requerido)
+ * 
+ * Request Body:
+ * {
+ *   id: string,                    // ID de la tarea (requerido)
+ *   status?: string,               // Nuevo estado: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+ *   completionPercentage?: number, // Progreso 0-100
+ *   actualHours?: number           // Horas reales trabajadas
+ * }
+ * 
+ * Logica:
+ * - Si status cambia a 'completed':
+ *   1. Calcula gemas basadas en difficulty y estimatedHours
+ *   2. Otorga gemas al usuario asignado
+ *   3. Actualiza completed_at a NOW()
+ * - Si completionPercentage llega a 100%, auto-completa tarea
+ * 
+ * Response:
+ * {
+ *   success: true,
+ *   data: {
+ *     task: { ...taskActualizada },
+ *     gemsAwarded?: number  // Si se completo la tarea
+ *   }
+ * }
+ */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()

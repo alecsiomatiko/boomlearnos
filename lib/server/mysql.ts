@@ -6,14 +6,17 @@ import { randomUUID } from "crypto"
 
 // Configuración de la base de datos MySQL
 const dbConfig = {
-  host: process.env.DB_HOST || 'srv440.hstgr.io',
+  host: process.env.DB_HOST || '151.106.99.1',
   port: parseInt(process.env.DB_PORT || '3306'),
   user: process.env.DB_USER || 'u191251575_BoomlearnOS',
   password: process.env.DB_PASSWORD || 'Cerounocero.com20182417',
   database: process.env.DB_NAME || 'u191251575_BoomlearnOS',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 20, // Máximo de conexiones simultáneas
   queueLimit: 0,
+  connectTimeout: 60000, // 60 segundos para establecer conexión
+  enableKeepAlive: true, // Mantener conexiones vivas
+  keepAliveInitialDelay: 10000, // 10 segundos
   timezone: '+00:00'
 }
 

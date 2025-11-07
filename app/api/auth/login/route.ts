@@ -1,3 +1,42 @@
+/**
+ * POST /api/auth/login
+ * 
+ * Endpoint para autenticar usuarios en el sistema.
+ * 
+ * Request Body:
+ * {
+ *   "email": "usuario@ejemplo.com",
+ *   "password": "contraseña123"
+ * }
+ * 
+ * Response Success (200):
+ * {
+ *   "success": true,
+ *   "token": "jwt-token-aqui",
+ *   "user": {
+ *     "id": "uuid",
+ *     "email": "usuario@ejemplo.com",
+ *     "name": "Nombre Usuario",
+ *     "role": "admin" | "user",
+ *     "total_gems": 150,
+ *     "organization": { "id": "uuid", "name": "Empresa" },
+ *     // ... más campos
+ *   }
+ * }
+ * 
+ * Response Error (401):
+ * {
+ *   "success": false,
+ *   "error": "Credenciales inválidas"
+ * }
+ * 
+ * Notas:
+ * - El password se compara usando bcrypt
+ * - Se genera un JWT con expiración de 7 días
+ * - El token se retorna tanto en el body como en una cookie
+ * - Se incluye la información de la organización del usuario
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
 import bcrypt from 'bcrypt'

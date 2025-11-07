@@ -1,3 +1,27 @@
+/**
+ * TaskPanel - Panel principal de gestion de tareas
+ * 
+ * Componente central del dashboard para visualizar, filtrar, crear y gestionar
+ * tareas del equipo. Incluye sistema de gamificacion con gemas, progreso y
+ * prioridades.
+ * 
+ * Funcionalidades:
+ * - Tabs para filtrar por estado: todas, pendientes, en progreso, completadas
+ * - Busqueda por titulo/descripcion
+ * - Filtros por categoria, prioridad y fecha
+ * - Ordenamiento personalizado
+ * - Creacion de nuevas tareas con formulario modal
+ * - Vista detallada de tareas con modal
+ * - Sistema de comentarios
+ * - Animaciones de recompensa al completar tareas
+ * - Visualizacion de progreso con barra
+ * - Asignacion de gemas por tarea
+ * 
+ * @example
+ * ```tsx
+ * <TaskPanel />
+ * ```
+ */
 "use client"
 
 import { useState } from "react"

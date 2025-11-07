@@ -24,6 +24,21 @@ export interface User {
   badges?: Badge[]
   created_at: string
   updated_at: string
+  organization_id?: string // ✅ ID de la organización (alias)
+  current_organization_id?: string // ✅ ID de la organización actual
+  organizationId?: string // ✅ ID de la organización (otro alias)
+  organization?: {
+    id: string
+    name: string
+    companyName?: string
+    businessType?: string
+    companySize?: string
+    businessDescription?: string
+    targetAudience?: string
+    mission?: string
+    vision?: string
+    values?: string
+  }
 }
 
 export interface AuthUser {
@@ -42,9 +57,20 @@ export interface AuthUser {
   first_login?: boolean
   phone?: string
   permissions?: any
+  organization_id?: string // ✅ ID de la organización (alias)
+  current_organization_id?: string // ✅ ID de la organización actual
+  organizationId?: string // ✅ ID de la organización (otro alias)
   organization?: {
     id: string
     name: string
+    companyName?: string
+    businessType?: string
+    companySize?: string
+    businessDescription?: string
+    targetAudience?: string
+    mission?: string
+    vision?: string
+    values?: string
   }
 }
 

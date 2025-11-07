@@ -1,3 +1,60 @@
+/**
+ * POST /api/auth/register
+ * 
+ * Endpoint para registrar nuevos usuarios en el sistema.
+ * Requiere un código de acceso válido.
+ * 
+ * Request Body:
+ * {
+ *   "email": "nuevo@ejemplo.com",
+ *   "password": "contraseña123",
+ *   "firstName": "Juan",
+ *   "lastName": "Pérez",
+ *   "phone": "555-1234",           // Opcional
+ *   "city": "CDMX",                // Opcional
+ *   "businessType": "Retail",      // Opcional
+ *   "position": "CEO",             // Opcional
+ *   "accessCode": "DEMO2024"       // Requerido
+ * }
+ * 
+ * Response Success (201):
+ * {
+ *   "success": true,
+ *   "message": "Usuario registrado exitosamente",
+ *   "token": "jwt-token-aqui",
+ *   "user": {
+ *     "id": "uuid",
+ *     "email": "nuevo@ejemplo.com",
+ *     "name": "Juan Pérez",
+ *     "role": "admin",  // Todos los nuevos usuarios son admin por defecto
+ *     "onboardingStep": 1,
+ *     "onboardingCompleted": false,
+ *     "canAccessDashboard": false,
+ *     "first_login": false
+ *   }
+ * }
+ * 
+ * Response Error (400):
+ * {
+ *   "success": false,
+ *   "error": "Código de acceso inválido" | "El email ya está registrado" | ...
+ * }
+ * 
+ * Flujo:
+ * 1. Valida código de acceso
+ * 2. Verifica que el email no esté en uso
+ * 3. Hashea la contraseña con bcrypt
+ * 4. Crea el usuario en la BD
+ * 5. Marca el código de acceso como usado
+ * 6. Genera JWT token
+ * 7. Retorna usuario + token para auto-login
+ * 
+ * Notas:
+ * - Todos los usuarios nuevos empiezan como "admin"
+ * - El onboarding está desactivado por defecto (onboarding_step: 1)
+ * - El usuario debe completar el onboarding para acceder al dashboard
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
 import bcrypt from 'bcrypt'
@@ -86,20 +143,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // 🔑 DETECTAR SI ES EL PRIMER USUARIO (ADMIN AUTOMÁTICO)
-    console.log('🔍 [BACKEND DEBUG] Verificando si es el primer usuario...')
-    const userCount: any = await executeQuery('SELECT COUNT(*) as total FROM users', [])
-    const isFirstUser = Array.isArray(userCount) && userCount[0]?.total === 0
-    
-    // El primer usuario siempre es admin, otros pueden especificar rol
-    let role = 'user' // default
-    if (isFirstUser) {
-      role = 'admin'
-      console.log('👑 [BACKEND DEBUG] PRIMER USUARIO detectado - asignando rol ADMIN automáticamente')
-    } else if (userData.role && (userData.role === 'admin' || userData.role === 'user')) {
-      role = userData.role
-      console.log('🔍 [BACKEND DEBUG] Rol especificado:', role)
-    }
+    // 🔑 TODOS LOS USUARIOS SON ADMIN POR DEFECTO
+    const role = 'admin' // ✅ Todos los nuevos registros son admin
+    console.log('👑 [BACKEND DEBUG] Asignando rol ADMIN por defecto a todos los usuarios')
 
     const result: any = await executeQuery(`
       INSERT INTO users (

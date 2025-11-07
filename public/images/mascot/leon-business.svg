@@ -1,0 +1,86 @@
+<svg width="200" height="280" viewBox="0 0 200 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- León con traje de negocios -->
+  
+  <!-- Cuerpo (traje) -->
+  <ellipse cx="100" cy="210" rx="35" ry="50" fill="#2D2D2D"/>
+  <rect x="75" y="185" width="50" height="70" fill="#2D2D2D" rx="5"/>
+  
+  <!-- Camisa blanca -->
+  <path d="M 85 185 L 85 220 L 100 220 L 115 220 L 115 185 Z" fill="white"/>
+  
+  <!-- Corbata roja -->
+  <path d="M 98 185 L 95 220 L 100 240 L 105 220 L 102 185 Z" fill="#E53E3E"/>
+  
+  <!-- Brazos -->
+  <ellipse cx="65" cy="200" rx="12" ry="35" fill="#F59E0B"/>
+  <ellipse cx="135" cy="200" rx="12" ry="35" fill="#F59E0B"/>
+  
+  <!-- Manos con notepad -->
+  <ellipse cx="65" cy="230" rx="10" ry="10" fill="#F59E0B"/>
+  <ellipse cx="135" cy="230" rx="10" ry="10" fill="#F59E0B"/>
+  
+  <!-- Notepad -->
+  <rect x="120" y="215" width="25" height="35" fill="#FFF9E6" stroke="#2D2D2D" stroke-width="2" rx="2"/>
+  <line x1="125" y1="222" x2="140" y2="222" stroke="#2D2D2D" stroke-width="1"/>
+  <line x1="125" y1="228" x2="140" y2="228" stroke="#2D2D2D" stroke-width="1"/>
+  <line x1="125" y1="234" x2="140" y2="234" stroke="#2D2D2D" stroke-width="1"/>
+  
+  <!-- Lápiz -->
+  <line x1="55" y1="225" x2="55" y2="245" stroke="#8B4513" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="55,220 52,225 58,225" fill="#FCD34D"/>
+  
+  <!-- Piernas -->
+  <rect x="85" y="250" width="12" height="25" fill="#2D2D2D" rx="2"/>
+  <rect x="103" y="250" width="12" height="25" fill="#2D2D2D" rx="2"/>
+  
+  <!-- Zapatos -->
+  <ellipse cx="91" cy="275" rx="10" ry="5" fill="#1A1A1A"/>
+  <ellipse cx="109" cy="275" rx="10" ry="5" fill="#1A1A1A"/>
+  
+  <!-- Cabeza (melena de león) -->
+  <circle cx="100" cy="100" r="55" fill="#F59E0B"/>
+  <!-- Detalles de melena -->
+  <circle cx="70" cy="70" r="20" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="130" cy="70" r="20" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="60" cy="100" r="18" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="140" cy="100" r="18" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="70" cy="130" r="18" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="130" cy="130" r="18" fill="#F59E0B" opacity="0.8"/>
+  
+  <!-- Cara -->
+  <circle cx="100" cy="105" r="40" fill="#FCD34D"/>
+  
+  <!-- Orejas -->
+  <ellipse cx="70" cy="75" rx="12" ry="18" fill="#FCD34D"/>
+  <ellipse cx="130" cy="75" rx="12" ry="18" fill="#FCD34D"/>
+  <ellipse cx="70" cy="77" rx="7" ry="11" fill="#F59E0B"/>
+  <ellipse cx="130" cy="77" rx="7" ry="11" fill="#F59E0B"/>
+  
+  <!-- Ojos -->
+  <ellipse cx="85" cy="100" rx="10" ry="14" fill="white"/>
+  <ellipse cx="115" cy="100" rx="10" ry="14" fill="white"/>
+  <circle cx="87" cy="102" r="7" fill="#5D4037"/>
+  <circle cx="117" cy="102" r="7" fill="#5D4037"/>
+  <circle cx="89" cy="100" r="3" fill="white"/>
+  <circle cx="119" cy="100" r="3" fill="white"/>
+  
+  <!-- Cejas -->
+  <path d="M 78 88 Q 85 85 92 88" stroke="#5D4037" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M 108 88 Q 115 85 122 88" stroke="#5D4037" stroke-width="2" fill="none" stroke-linecap="round"/>
+  
+  <!-- Nariz -->
+  <ellipse cx="100" cy="115" rx="8" ry="6" fill="#8B4513"/>
+  <line x1="100" y1="121" x2="100" y2="128" stroke="#8B4513" stroke-width="2"/>
+  
+  <!-- Boca sonriente -->
+  <path d="M 90 128 Q 100 135 110 128" stroke="#8B4513" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="100" cy="132" r="1.5" fill="#E53E3E"/>
+  
+  <!-- Cola de león (lateral) -->
+  <path d="M 135 260 Q 170 250 175 240 Q 180 230 175 225" 
+        stroke="#F59E0B" 
+        stroke-width="8" 
+        fill="none" 
+        stroke-linecap="round"/>
+  <circle cx="175" cy="225" r="8" fill="#8B4513"/>
+</svg>

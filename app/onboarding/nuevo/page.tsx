@@ -55,13 +55,13 @@ export default function NewOnboardingPage() {
         }
         
         toast({
-          title: "¡Onboarding completado! 🎉",
-          description: `Perfil empresarial creado exitosamente. ${result.rewards ? `Has ganado ${result.rewards.gems} gemas.` : ''}`,
+          title: "¡Bienvenido a BoomLearn! 🎉",
+          description: `Perfil empresarial creado exitosamente. ${result.rewards ? `Has ganado ${result.rewards.gems} gemas.` : ''} Ahora puedes acceder al dashboard.`,
         })
         
-        // Mantener el flujo original: ir al diagnóstico
+        // Ir directamente al dashboard - el segundo diagnóstico está disponible en mega-diagnóstico
         setTimeout(() => {
-          router.push('/onboarding/diagnostico')
+          router.push('/dashboard')
         }, 2000)
       } else {
         throw new Error(result.error || 'Error procesando respuestas')

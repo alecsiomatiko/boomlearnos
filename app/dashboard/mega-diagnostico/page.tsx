@@ -6,13 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { CheckCircle, Clock, FileText, Plus, Shield, Bell, ClipboardList, Building2, Target, Eye, Brain } from "lucide-react"
+import { CheckCircle, Clock, FileText, Plus, Shield, Bell, ClipboardList, Building2, Target, Eye, Brain, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { getUser } from "@/lib/user-manager"
 import { DiagnosticService, type DiagnosticModule } from "@/services/diagnostic-service"
 import { useResponseManager } from "@/hooks/use-response-manager"
 import type { User } from "@/types/user"
 import AIAnalysisComponent from "@/components/mega-diagnostic/ai-analysis"
+import { useModuleAIAnalysis } from "@/hooks/use-module-ai-analysis"
+import { OnboardingRequiredModal } from "@/components/mega-diagnostic/onboarding-required-modal"
+import { OnboardingBanner } from "@/components/mega-diagnostic/onboarding-banner"
 
 interface DiagnosticOverview {
   onboardingDiagnostic: {
@@ -45,15 +48,39 @@ export default function MegaDiagnosticoPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingModule, setLoadingModule] = useState<string | null>(null)
   const [showAIAnalysis, setShowAIAnalysis] = useState(false)
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false)
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0) // ✅ NUEVO: key para forzar refresh
   const router = useRouter()
   
   // Hook para manejar respuestas
   const { getUserResponses, checkModuleCompletion, isAuthenticated } = useResponseManager()
+  
+  // Hook para análisis IA por módulo
+  const { analyzeModule, loading: aiLoading } = useModuleAIAnalysis()
+
+  // ✅ NUEVO: Detectar cuando se regresa de un módulo para refrescar el progreso
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 [OVERVIEW] Ventana recuperó focus - refrescando progreso...')
+      setRefreshKey(prev => prev + 1)
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   useEffect(() => {
     async function initialize() {
       const currentUser = await getUser()
       setUser(currentUser)
+
+      // ✅ VERIFICAR QUE SEA ADMIN
+      if (!currentUser || currentUser.role !== 'admin') {
+        console.warn('🚫 [MEGA-DIAGNOSTICO] Acceso denegado - Usuario no es admin')
+        router.push('/dashboard')
+        return
+      }
 
       try {
         // Cargar módulos de diagnóstico
@@ -70,6 +97,18 @@ export default function MegaDiagnosticoPage() {
         if (overviewData.success) {
           setDiagnosticOverview(overviewData.diagnostics)
           console.log('✅ [MEGA-DIAGNOSTICO] DiagnosticOverview actualizado:', JSON.stringify(overviewData.diagnostics.onboardingDiagnostic, null, 2))
+          
+          // 🔍 VERIFICAR SI EL USUARIO NECESITA COMPLETAR DIAGNÓSTICO DE ONBOARDING
+          const hasOnboardingDiagnostic = overviewData.diagnostics?.onboardingDiagnostic?.completed
+          console.log('🔍 [MEGA-DIAGNOSTICO] ¿Tiene diagnóstico de onboarding?', hasOnboardingDiagnostic)
+          
+          if (!hasOnboardingDiagnostic) {
+            console.log('⚠️ [MEGA-DIAGNOSTICO] Usuario sin diagnóstico de onboarding - Mostrando modal')
+            // Mostrar el modal después de un pequeño delay para mejor UX
+            setTimeout(() => {
+              setShowOnboardingModal(true)
+            }, 800)
+          }
         } else {
           console.log('❌ [MEGA-DIAGNOSTICO] Error en la respuesta:', overviewData)
         }
@@ -85,7 +124,7 @@ export default function MegaDiagnosticoPage() {
     }
 
     initialize()
-  }, [isAuthenticated])
+  }, [isAuthenticated, refreshKey]) // ✅ AGREGADO: refreshKey como dependencia
 
   const loadModuleProgress = async (diagnosticModules: DiagnosticModule[]) => {
     console.log('🔍 [OVERVIEW] Cargando progreso real de módulos...')
@@ -178,6 +217,27 @@ export default function MegaDiagnosticoPage() {
   ]
   */
 
+  const handleModuleAnalysis = async (moduleCode: string) => {
+    if (!user?.id) {
+      alert('Error: Usuario no identificado');
+      return;
+    }
+
+    try {
+      console.log(`🤖 Iniciando análisis IA para módulo ${moduleCode}`);
+      const analysis = await analyzeModule(user.id, moduleCode);
+      
+      if (analysis) {
+        alert(`✅ Análisis IA completado para ${moduleCode}. Ve a la página del módulo para ver los resultados.`);
+      } else {
+        alert('❌ Error al generar el análisis IA. Intenta de nuevo.');
+      }
+    } catch (error) {
+      console.error('Error en análisis IA:', error);
+      alert('❌ Error al generar el análisis IA. Intenta de nuevo.');
+    }
+  };
+
   const handleModuleClick = async (module: (typeof modules)[0]) => {
     setIsLoading(true)
     setLoadingModule(module.id)
@@ -194,8 +254,8 @@ export default function MegaDiagnosticoPage() {
     }
   }
 
-  // Calcular módulos completados del mega diagnóstico
-  const megaDiagnosticCompleted = modules.filter((m) => m.answered_questions === m.total_questions).length
+  // Calcular módulos completados del mega diagnóstico usando el progreso real
+  const megaDiagnosticCompleted = Object.values(moduleProgress).filter(p => p.isCompleted).length
   
   // Agregar el diagnóstico de onboarding al conteo (si existe)
   const onboardingCompleted = diagnosticOverview?.onboardingDiagnostic?.completed ? 1 : 0
@@ -221,6 +281,16 @@ export default function MegaDiagnosticoPage() {
             Mega Diagnóstico<span className="text-red-500">.</span>
           </h1>
           <div className="flex items-center gap-3">
+            {/* ✅ Botón de Resultados */}
+            {Object.values(moduleProgress).filter(p => p.isCompleted).length > 0 && (
+              <Button
+                onClick={() => router.push('/dashboard/mega-diagnostico/resultados')}
+                className="flex items-center gap-2 bg-brand-red hover:bg-red-700"
+              >
+                <Target className="h-4 w-4" />
+                Ver Resultados
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setShowAIAnalysis(!showAIAnalysis)}
@@ -235,9 +305,111 @@ export default function MegaDiagnosticoPage() {
           </div>
         </div>
 
+        {/* Banner de Onboarding Pendiente */}
+        <OnboardingBanner
+          show={showOnboardingBanner && !diagnosticOverview?.onboardingDiagnostic?.completed}
+          onDismiss={() => setShowOnboardingBanner(false)}
+        />
+
         {/* AI Analysis Section */}
         {showAIAnalysis && (
           <AIAnalysisComponent />
+        )}
+
+        {/* SECCIÓN PROMINENTE: Misión, Visión y Valores */}
+        {diagnosticOverview?.organization?.mission && (
+          <Card className="border-2 border-red-200 bg-gradient-to-br from-white via-red-50/30 to-white shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center shadow-md">
+                    <Target className="h-6 w-6 text-white" />
+                  </div>
+                  Identidad Corporativa
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Misión */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <Target className="h-5 w-5 text-brand-red" />
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900">Misión</h3>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-red-100 shadow-sm">
+                    <p className="text-gray-700 leading-relaxed">
+                      {diagnosticOverview.organization.mission}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Visión */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <Eye className="h-5 w-5 text-brand-red" />
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900">Visión</h3>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-red-100 shadow-sm">
+                    <p className="text-gray-700 leading-relaxed">
+                      {diagnosticOverview.organization.vision}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Valores */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-brand-red" />
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900">Valores</h3>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-red-100 shadow-sm">
+                    {diagnosticOverview.organization.vision && 
+                     typeof diagnosticOverview.organization.vision === 'object' ? (
+                      <ul className="space-y-2">
+                        {(Array.isArray(diagnosticOverview.organization.vision) 
+                          ? diagnosticOverview.organization.vision 
+                          : Object.values(diagnosticOverview.organization.vision)
+                        ).map((value: any, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="text-brand-red font-bold mt-0.5">•</span>
+                            <span className="text-gray-700 text-sm">
+                              {typeof value === 'string' ? value : value.name || value.title || JSON.stringify(value)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-700 leading-relaxed text-sm">
+                        {diagnosticOverview.organization.vision || 'No especificados'}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Resumen de la Empresa y Diagnóstico de Onboarding */}
@@ -328,18 +500,11 @@ export default function MegaDiagnosticoPage() {
                   <div className="text-center py-4">
                     <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                     <h3 className="font-semibold text-gray-900 mb-2">
-                      Diagnóstico Pendiente
+                      Diagnóstico Inicial Pendiente
                     </h3>
                     <p className="text-gray-600 text-sm mb-3">
-                      Completa tu diagnóstico inicial para obtener insights valiosos
+                      Tu diagnóstico inicial aún no ha sido completado. Este se completa automáticamente durante el onboarding.
                     </p>
-                    <Button 
-                      size="sm"
-                      onClick={() => router.push('/onboarding/diagnostico')}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
-                      Completar Diagnóstico
-                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -347,13 +512,16 @@ export default function MegaDiagnosticoPage() {
           </div>
         )}
 
-        {/* Main Hero Section */}
-        <Card className="bg-white rounded-3xl shadow-md overflow-hidden border-0">
+        {/* Main Hero Section con Mascota */}
+        <Card className="bg-white rounded-3xl shadow-md overflow-hidden border-0 relative">
           <CardContent className="p-6 sm:p-8">
-            <div className="flex items-start gap-5">
+            <div className="flex items-center gap-8 relative">
               <div className="flex-shrink-0">
-                <ClipboardList className="h-16 w-16 text-red-500" />
+                <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <ClipboardList className="h-10 w-10 text-white" />
+                </div>
               </div>
+              
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-gray-900">
                   Mega Cuestionario Organizacional<span className="text-red-500">.</span>
@@ -362,6 +530,19 @@ export default function MegaDiagnosticoPage() {
                   Este cuestionario te ayudará a evaluar diferentes aspectos de tu organización para identificar áreas
                   de mejora y fortalezas. Completa cada módulo para obtener un diagnóstico completo.
                 </p>
+              </div>
+              
+              {/* 🦁 MASCOTA ÚNICA Y PROMINENTE */}
+              <div className="hidden xl:block flex-shrink-0">
+                <motion.img 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  src="/images/onboarding.png" 
+                  alt="Mascota Boomlearn" 
+                  className="w-48 h-48 object-contain drop-shadow-2xl"
+                  style={{ imageRendering: 'crisp-edges' }}
+                />
               </div>
             </div>
 
@@ -397,6 +578,44 @@ export default function MegaDiagnosticoPage() {
                 </p>
               </div>
             </div>
+
+            {/* ✅ BOTÓN PARA VER PLAN ESTRATÉGICO CUANDO TODO ESTÉ COMPLETO */}
+            {Object.values(moduleProgress).filter(p => p.isCompleted).length === modules.length && modules.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mt-8"
+              >
+                <Card className="bg-gradient-to-r from-green-500 to-emerald-600 border-0 shadow-xl">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-white bg-opacity-20 rounded-full p-4">
+                          <Sparkles className="h-8 w-8 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-white mb-1">
+                            🎉 ¡Felicidades! Diagnóstico Completo
+                          </h3>
+                          <p className="text-white text-opacity-90">
+                            Has completado todos los módulos. Tu plan estratégico personalizado está listo.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="bg-white text-green-600 hover:bg-gray-100 font-bold shadow-lg"
+                        onClick={() => router.push('/dashboard/estrategia')}
+                      >
+                        <Brain className="h-5 w-5 mr-2" />
+                        Ver Plan Estratégico
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </CardContent>
         </Card>
 
@@ -409,7 +628,17 @@ export default function MegaDiagnosticoPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <Card className="bg-white shadow-md rounded-2xl border-0 overflow-hidden">
+              <Card className="bg-white shadow-md rounded-2xl border-0 overflow-hidden relative">
+                {/* Badge de completado en esquina superior derecha */}
+                {moduleProgress[module.module_code]?.isCompleted && (
+                  <div className="absolute top-2 right-2 z-20">
+                    <div className="flex items-center gap-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                      <CheckCircle className="h-3 w-3" />
+                      COMPLETADO
+                    </div>
+                  </div>
+                )}
+
                 {/* ESTRUCTURA CORRECTA: Header rojo con padding interno */}
                 <div className="p-4">
                   <div className="bg-red-500 rounded-t-2xl p-4 -mx-4 -mt-4">
@@ -476,6 +705,46 @@ export default function MegaDiagnosticoPage() {
                       </span>
                     )}
                   </Button>
+
+                  {/* ✅ Botón para ver resultados individuales del módulo */}
+                  {moduleProgress[module.module_code]?.isCompleted && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-2 border-green-300 bg-green-50 text-green-700 hover:bg-green-100 transition-all duration-300"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/mega-diagnostico/resultados?module=${module.module_code}`);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Resultados
+                    </Button>
+                  )}
+
+                  {/* Botón de Análisis IA para módulos completados */}
+                  {moduleProgress[module.module_code]?.isCompleted && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-2 border-red-200 text-red-700 hover:bg-red-50 transition-all duration-300 disabled:opacity-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleModuleAnalysis(module.module_code);
+                      }}
+                      disabled={aiLoading}
+                    >
+                      {aiLoading ? (
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-4 w-4 animate-pulse" />
+                          <span>Analizando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-4 w-4" />
+                          <span>🤖 Análisis IA</span>
+                        </div>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -543,6 +812,17 @@ export default function MegaDiagnosticoPage() {
           </div>
         </div>
       )}
+
+      {/* Modal para completar diagnóstico de onboarding */}
+      <OnboardingRequiredModal
+        isOpen={showOnboardingModal}
+        userName={user?.name}
+        onClose={() => {
+          setShowOnboardingModal(false)
+          // Mostrar el banner cuando se cierra el modal
+          setShowOnboardingBanner(true)
+        }}
+      />
     </div>
   )
 }

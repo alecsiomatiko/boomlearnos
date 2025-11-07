@@ -1,36 +1,84 @@
-# 🏢 Sistema de Departamentos - BoomlearnOS
+# Sistema de Departamentos - Documentacion Tecnica
 
-## 📋 Descripción General
+## Descripcion General
 
-El sistema de departamentos permite a los administradores crear, gestionar y organizar la estructura departamental de su organización, facilitando la asignación de empleados a diferentes áreas funcionales.
+Sistema para crear y gestionar la estructura departamental de organizaciones.
+Permite asignar empleados a areas funcionales, controlar permisos por departamento
+y organizar el equipo de trabajo.
 
-## 🗄️ Estructura de Base de Datos
+## Arquitectura del Sistema
 
-### Tabla: `organization_departments`
+### Diagrama de Relaciones
+
+```
+[Organization]
+      |
+      | 1:N
+      v
+[Departments] ←──────┐
+      |              | N:1
+      | 1:N          |
+      v              |
+  [Users] ───────────┘
+      |
+      v
+[Invitations]
+```
+
+### Flujo de Asignacion
+
+```
+Admin crea departamento → Departamento activo → Admin asigna usuarios
+                                |
+                                v
+                         Usuarios heredan permisos
+                                |
+                                v
+                    Metricas y reportes agrupados por dept
+```
+
+## Estructura de Base de Datos
+
+### Tabla: organization_departments
+
+Almacena todos los departamentos de cada organizacion.
 
 ```sql
 CREATE TABLE organization_departments (
   id VARCHAR(36) PRIMARY KEY DEFAULT (uuid()),
-  organization_id VARCHAR(36) NOT NULL,
-  name VARCHAR(100) NOT NULL,
-  description TEXT,
-  color VARCHAR(16),
-  active TINYINT(1) DEFAULT 1,
+  organization_id VARCHAR(36) NOT NULL,           -- FK a organizations
+  name VARCHAR(100) NOT NULL,                     -- Nombre del departamento
+  description TEXT,                               -- Descripcion detallada
+  color VARCHAR(16),                              -- Color hex (#3B82F6)
+  active TINYINT(1) DEFAULT 1,                    -- Activo/Inactivo
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
   INDEX idx_org_departments (organization_id),
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 ```
 
-### Relación con Usuarios
+**Campos clave:**
+- `color`: Usado en UI para identificacion visual rapida
+- `active`: Permite desactivar sin eliminar (soft delete)
+- `CASCADE`: Si se elimina org, se eliminan sus departamentos
+
+### Relacion con Usuarios
+
+Los usuarios tienen una FK opcional a departamentos:
 
 ```sql
--- Tabla users tiene:
-department_id VARCHAR(36),
+-- En tabla users:
+department_id VARCHAR(36),                        -- FK a organization_departments
 INDEX idx_users_department (department_id),
 FOREIGN KEY (department_id) REFERENCES organization_departments(id) ON DELETE SET NULL
 ```
+
+**Comportamiento:**
+- `ON DELETE SET NULL`: Si se elimina el departamento, usuarios quedan sin departamento asignado
+- Un usuario puede pertenecer a 0 o 1 departamento
+- Un departamento puede tener N usuarios
 
 ## 🎨 Sistema de Colores
 
@@ -49,51 +97,82 @@ FOREIGN KEY (department_id) REFERENCES organization_departments(id) ON DELETE SE
 
 ### Selector de Color
 
-- Paleta de 8 colores predefinidos
-- Selector de color personalizado (cualquier hex)
-- Input manual de código hexadecimal
-- Vista previa en tiempo real
+## Sistema de Colores
 
-## 📊 Panel de Administración
+Los departamentos usan colores para identificacion visual rapida en UI.
 
-### Ruta: `/admin/departments`
+### Colores Predefinidos
 
-#### Características:
+| Color | Hex | Uso Recomendado |
+|-------|-----|-----------------|
+| Azul | #3B82F6 | Direccion, Administracion, Gerencia |
+| Verde | #10B981 | RRHH, Recursos, Sostenibilidad |
+| Purpura | #8B5CF6 | Tecnologia, IT, Innovacion |
+| Rosa | #EC4899 | Marketing, Creatividad, Diseno |
+| Naranja | #F59E0B | Ventas, Comercial, Business Development |
+| Rojo | #EF4444 | Operaciones, Produccion, Logistica |
+| Cyan | #06B6D4 | Atencion Cliente, Soporte, CS |
+| Indigo | #6366F1 | Legal, Compliance, Auditoria |
 
-1. **✨ Crear Departamentos**
-   - Nombre descriptivo
-   - Descripción detallada
-   - Color identificativo (predefinido o custom)
-   - Estado activo/inactivo
+### Selector de Color en UI
 
-2. **✏️ Editar Departamentos**
-   - Modificar información
-   - Cambiar color
-   - Activar/desactivar
-   - Actualización en tiempo real
+```typescript
+// Componente permite:
+- Seleccion de paleta predefinida (8 colores)
+- Color picker custom (HTML5 input type="color")
+- Input manual de hex (#RRGGBB)
+- Vista previa en tiempo real del color seleccionado
+```
 
-3. **🗑️ Eliminar Departamentos**
-   - Confirmación obligatoria
-   - Los usuarios asignados se desvinculan (department_id = NULL)
-   - Las invitaciones pendientes se eliminan
-   - Scoped por organización
+## Panel de Administracion
 
-4. **📈 Estadísticas**
-   - Total de departamentos
-   - Departamentos activos
-   - Empleados asignados (total)
-   - Departamentos inactivos
+### Ruta: /admin/departments
 
-5. **👥 Conteo de Empleados**
-   - Muestra empleados asignados por departamento
-   - Actualización automática con JOIN a tabla users
-   - Vista en tiempo real
+Interfaz completa para CRUD de departamentos.
 
-## 🔌 API Endpoints
+**Funcionalidades:**
 
-### GET `/api/admin/departments`
+1. **Crear Departamentos**
+   - Formulario con nombre (max 100 chars)
+   - Descripcion detallada (textarea)
+   - Selector de color con preview
+   - Toggle activo/inactivo
+   - Validaciones en tiempo real
 
-Obtiene todos los departamentos de la organización con conteo de empleados.
+2. **Listar Departamentos**
+   - Grid/tabla con todos los departamentos
+   - Conteo de empleados asignados (JOIN con users)
+   - Filtro por estado (activos/inactivos)
+   - Badge de color visual
+   - Estadisticas en cards
+
+3. **Editar Departamentos**
+   - Modal con formulario pre-poblado
+   - Actualizacion instantanea en UI
+   - Validacion de unicidad de nombre
+   - Cambio de color en tiempo real
+
+4. **Eliminar Departamentos**
+   - Dialog de confirmacion obligatorio
+   - Advierte si hay usuarios asignados
+   - Al eliminar: users.department_id = NULL
+   - Invitaciones pendientes tambien se eliminan
+   - Scope por organization_id
+
+5. **Estadisticas Dashboard**
+   - Total departamentos creados
+   - Departamentos activos vs inactivos
+   - Total empleados asignados
+   - Departamento con mas empleados
+   - Departamentos sin empleados (vacios)
+
+## API Endpoints
+
+Todos los endpoints requieren autenticacion JWT y organizationId.
+
+### GET /api/admin/departments
+
+Obtiene todos los departamentos de la organizacion con conteo de empleados.
 
 **Headers:**
 ```
@@ -102,52 +181,77 @@ Authorization: Bearer <JWT_TOKEN>
 
 **Query Params:**
 ```
-organization_id: string (automático vía useOrgApi)
+organization_id: string (automatico via useOrgApi)
 ```
 
-**Response:**
+**Query SQL:**
+```sql
+SELECT 
+  d.*,
+  COUNT(u.id) as user_count
+FROM organization_departments d
+LEFT JOIN users u ON u.department_id = d.id
+WHERE d.organization_id = ?
+GROUP BY d.id
+ORDER BY d.created_at DESC
+```
+
+**Response 200:**
 ```json
 [
   {
-    "id": "uuid",
+    "id": "dept-uuid-1",
     "organization_id": "org-uuid",
-    "name": "Marketing y Comunicación",
-    "description": "Estrategias de marketing...",
+    "name": "Marketing y Comunicacion",
+    "description": "Estrategias de marketing digital y comunicacion interna/externa",
     "color": "#EC4899",
     "active": true,
     "user_count": 5,
-    "created_at": "2025-10-15T10:00:00.000Z",
-    "updated_at": "2025-10-15T10:00:00.000Z"
+    "created_at": "2025-01-15T10:00:00.000Z",
+    "updated_at": "2025-01-20T14:30:00.000Z"
   }
 ]
 ```
 
-### POST `/api/admin/departments`
+---
 
-Crea un nuevo departamento.
+### POST /api/admin/departments
+
+Crea un nuevo departamento en la organizacion.
 
 **Body:**
 ```json
 {
   "name": "Recursos Humanos",
-  "description": "Gestión del talento y bienestar del personal",
+  "description": "Gestion del talento y bienestar del personal",
   "color": "#10B981",
   "active": true
 }
 ```
 
-**Response:**
+**Validaciones:**
+- `name`: requerido, max 100 chars, unico en la organizacion
+- `description`: opcional, tipo TEXT
+- `color`: requerido, formato hex (#RRGGBB)
+- `active`: boolean, default true
+
+**Response 201:**
 ```json
 {
   "success": true,
   "message": "Departamento creado exitosamente",
   "data": {
-    "id": "new-uuid"
+    "id": "new-dept-uuid"
   }
 }
 ```
 
-### PUT `/api/admin/departments/:id`
+**Response 400:** Validacion fallida
+**Response 409:** Nombre duplicado en la organizacion
+
+---
+
+### PUT /api/admin/departments/:id
 
 Actualiza un departamento existente.
 

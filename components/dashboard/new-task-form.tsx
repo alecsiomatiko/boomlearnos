@@ -1,3 +1,34 @@
+/**
+ * NewTaskForm - Formulario de creacion de tareas
+ * 
+ * Formulario completo para crear nuevas tareas con todas las propiedades:
+ * categoria, prioridad, dificultad, asignacion, fechas y estimacion de gemas.
+ * 
+ * @param onSubmit - Callback al enviar el formulario con la tarea creada
+ * @param onCancel - Callback al cancelar la creacion
+ * 
+ * Features:
+ * - Seleccion de categoria con iconos y colores
+ * - Prioridad: baja, media, alta
+ * - Dificultad: facil, media, dificil, experta
+ * - Asignacion a miembro del equipo
+ * - Calendario para fecha limite
+ * - Estimacion de horas
+ * - Calculo automatico de gemas segun dificultad y horas
+ * - Validaciones en tiempo real
+ * - Mascota animada que reacciona al progreso
+ * 
+ * Formula de gemas:
+ * baseGems (por categoria) * difficultyMultiplier * hoursMultiplier
+ * 
+ * @example
+ * ```tsx
+ * <NewTaskForm
+ *   onSubmit={(task) => createTask(task)}
+ *   onCancel={() => setShowForm(false)}
+ * />
+ * ```
+ */
 "use client"
 
 import type React from "react"

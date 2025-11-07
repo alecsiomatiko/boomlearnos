@@ -1,3 +1,40 @@
+/**
+ * DailyQuests - Panel de misiones diarias
+ * 
+ * Muestra las tareas del dia en formato de "quests" gamificadas.
+ * Incluye animaciones de confetti y recompensas al completar.
+ * 
+ * @param tasks - Array de tareas a mostrar
+ * @param onTaskUpdate - Callback cuando se actualiza una tarea
+ * @param onTaskSelect - Callback al seleccionar una tarea para ver detalles
+ * @param onNewTask - Callback para crear nueva tarea
+ * 
+ * Features:
+ * - Lista de tareas pendientes del dia
+ * - Checkbox para marcar como completada
+ * - Barra de progreso por tarea
+ * - Indicador de prioridad con colores
+ * - Animacion de confetti al completar
+ * - Modal de recompensa con gemas ganadas
+ * - Desbloqueo de badges si aplica
+ * - Integracion con sistema de puntos
+ * 
+ * Prioridades:
+ * - urgent: rojo
+ * - high: naranja
+ * - medium: azul
+ * - low: gris
+ * 
+ * @example
+ * ```tsx
+ * <DailyQuests
+ *   tasks={todayTasks}
+ *   onTaskUpdate={(task) => updateTask(task)}
+ *   onTaskSelect={(task) => setSelectedTask(task)}
+ *   onNewTask={() => setShowNewTaskForm(true)}
+ * />
+ * ```
+ */
 "use client"
 
 import { useState } from "react"

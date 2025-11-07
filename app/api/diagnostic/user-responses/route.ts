@@ -3,11 +3,11 @@ import mysql from 'mysql2/promise';
 
 // Configuración de la base de datos
 const dbConfig = {
-  host: 'srv440.hstgr.io',
-  user: 'u191251575_BoomlearnOS',
-  password: 'Cerounocero.com20182417',
-  database: 'u191251575_BoomlearnOS',
-  port: 3306
+  host: process.env.DB_HOST || '151.106.99.1',
+  user: process.env.DB_USER || 'u191251575_BoomlearnOS',
+  password: process.env.DB_PASSWORD || 'Cerounocero.com20182417',
+  database: process.env.DB_NAME || 'u191251575_BoomlearnOS',
+  port: parseInt(process.env.DB_PORT || '3306')
 };
 
 export interface UserResponse {
@@ -25,10 +25,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const organizationId = searchParams.get('organizationId'); // ✅ NUEVO: Filtrar por organización
+    const moduleCode = searchParams.get('moduleCode'); // Filtro opcional por módulo
 
-    if (!userId) {
+    if (!userId || !organizationId) {
       return NextResponse.json(
-        { error: 'Se requiere el ID del usuario' },
+        { error: 'Se requiere userId y organizationId' },
         { status: 400 }
       );
     }
@@ -36,8 +38,8 @@ export async function GET(request: NextRequest) {
     const connection = await mysql.createConnection(dbConfig);
 
     try {
-      // Consulta que obtiene todas las respuestas del usuario con datos completos
-      const query = `
+      // ✅ Consulta filtrando POR ORGANIZACIÓN
+      let query = `
         SELECT 
           dm.module_code as moduleCode,
           dm.title as moduleTitle,
@@ -46,17 +48,28 @@ export async function GET(request: NextRequest) {
           dop.id as selectedOptionId,
           dop.option_text as optionText,
           dop.weight as optionValue,
-          ur.created_at as responseDate
+          ur.created_at as responseDate,
+          ur.question_id,
+          ur.selected_option_id
         FROM user_responses ur
         INNER JOIN diagnostic_questions dq ON ur.question_id = dq.id
         INNER JOIN diagnostic_options dop ON ur.selected_option_id = dop.id
         INNER JOIN diagnostic_submodules ds ON dq.submodule_id = ds.id
         INNER JOIN diagnostic_modules dm ON ds.module_id = dm.id
-        WHERE ur.user_id = ?
-        ORDER BY dm.order_index, ds.order_index, dq.order_index
+        WHERE ur.user_id = ? AND ur.organization_id = ?
       `;
+      
+      const queryParams: any[] = [userId, organizationId];
+      
+      // Agregar filtro por módulo si se especifica
+      if (moduleCode) {
+        query += ' AND dm.module_code = ?';
+        queryParams.push(moduleCode);
+      }
+      
+      query += ' ORDER BY dm.order_index, ds.order_index, dq.order_index';
 
-      const [rows] = await connection.execute(query, [userId]);
+      const [rows] = await connection.execute(query, queryParams);
       
       const userResponses = (rows as any[]).map(row => ({
         moduleCode: row.moduleCode,

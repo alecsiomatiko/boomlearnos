@@ -1,3 +1,27 @@
+/**
+ * BadgesPanel - Panel de insignias y logros
+ * 
+ * Muestra las insignias del usuario con su progreso de desbloqueo.
+ * Visualiza las primeras 3 insignias con barra de progreso y link
+ * a la vista completa.
+ * 
+ * @param user - Usuario actual con sus badges desbloqueadas
+ * @param completedTasks - Numero total de tareas completadas (para calcular progreso)
+ * 
+ * Features:
+ * - Muestra icono bloqueado para badges no desbloqueadas
+ * - Barra de progreso hacia el desbloqueo
+ * - Link a pagina completa de medallas
+ * - Animaciones y estilos glassmorphism
+ * 
+ * @example
+ * ```tsx
+ * <BadgesPanel 
+ *   user={currentUser} 
+ *   completedTasks={15}
+ * />
+ * ```
+ */
 "use client"
 
 import { Lock, ArrowRight } from "lucide-react"

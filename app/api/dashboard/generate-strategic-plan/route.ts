@@ -40,9 +40,53 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'userId es requerido' }, { status: 400 })
     }
 
+    // ✅ VERIFICAR SI YA EXISTE PLAN GUARDADO
+    try {
+      const [existingPlan] = await executeQuery(`
+        SELECT plan_data, created_at
+        FROM strategic_plans
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [userId]) as any[]
+
+      if (existingPlan) {
+        console.log('✅ [STRATEGIC-PLAN] Usando plan guardado previamente')
+        const savedPlan = JSON.parse(existingPlan.plan_data)
+        return NextResponse.json({
+          success: true,
+          plan: savedPlan,
+          cached: true,
+          generatedAt: existingPlan.created_at
+        })
+      }
+    } catch (error) {
+      console.log('⚠️ [STRATEGIC-PLAN] Tabla strategic_plans no existe, creándola...')
+      // Crear tabla si no existe
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS strategic_plans (
+          id VARCHAR(36) PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          organization_id VARCHAR(36) NULL,
+          plan_data JSON NOT NULL,
+          objective_general TEXT NULL,
+          duration_months INT DEFAULT 6,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_user_id (user_id),
+          INDEX idx_organization_id (organization_id),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `
+      await executeQuery(createTableQuery, [])
+      console.log('✅ [STRATEGIC-PLAN] Tabla strategic_plans creada')
+    }
+
+    console.log('🤖 [STRATEGIC-PLAN] Generando nuevo plan estratégico...')
+
     // Obtener datos de la organización y diagnóstico del usuario
     const [user] = await executeQuery(`
-      SELECT u.id, u.first_name, u.last_name, org.name as companyName, org.business_type, org.mission, org.vision, org.target_audience, org.unique_value
+      SELECT u.id, u.first_name, u.last_name, u.organization_id, org.name as companyName, org.business_type, org.mission, org.vision, org.target_audience, org.unique_value
       FROM users u
       LEFT JOIN organizations org ON u.organization_id = org.id
       WHERE u.id = ?
@@ -135,9 +179,28 @@ export async function POST(request: NextRequest) {
     const jsonString = jsonMatch ? jsonMatch[0] : content
     const plan = JSON.parse(jsonString)
 
-    // Puedes guardar el plan en la base de datos si lo deseas aquí
+    // ✅ GUARDAR EL PLAN EN LA BASE DE DATOS
+    try {
+      const { randomUUID } = require('crypto')
+      const planId = randomUUID()
+      const savePlanQuery = `
+        INSERT INTO strategic_plans (id, user_id, organization_id, plan_data, objective_general)
+        VALUES (?, ?, ?, ?, ?)
+      `
+      await executeQuery(savePlanQuery, [
+        planId,
+        userId,
+        user.organization_id || null,
+        JSON.stringify(plan),
+        plan.objetivo_general || null
+      ])
+      console.log('✅ [STRATEGIC-PLAN] Plan guardado en base de datos')
+    } catch (saveError) {
+      console.error('⚠️ [STRATEGIC-PLAN] Error al guardar plan:', saveError)
+      // No fallar si no se puede guardar, solo advertir
+    }
 
-    return NextResponse.json({ success: true, plan })
+    return NextResponse.json({ success: true, plan, cached: false })
   } catch (error) {
     let errorMsg = 'Error generando plan estratégico'
     if (error && typeof error === 'object' && 'message' in error) {

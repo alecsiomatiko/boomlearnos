@@ -1,7 +1,21 @@
+/**
+ * API de Metricas - Dashboard Analytics
+ * 
+ * Endpoint principal para obtener todas las metricas y KPIs del dashboard.
+ * Calcula estadisticas de tareas, gemas, racha, tendencias y comparaciones
+ * con periodos anteriores.
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
 import { NextRequest as Req } from 'next/server'
-// Para insights IA
+
+/**
+ * Obtiene insights generados por IA sobre el rendimiento del usuario
+ * @param userId - ID del usuario
+ * @param period - Periodo de analisis
+ * @returns Insights de IA o null si falla
+ */
 async function fetchAIInsights(userId: string, period: string) {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/metrics/ai-insights`, {
@@ -16,7 +30,43 @@ async function fetchAIInsights(userId: string, period: string) {
   }
 }
 
-// GET /api/metrics - Obtener métricas del dashboard
+/**
+ * GET /api/metrics
+ * 
+ * Obtiene metricas completas del dashboard para un usuario en un periodo especifico.
+ * 
+ * Query Parameters:
+ * @param userId - ID del usuario (requerido)
+ * @param period - Periodo: 'week' | 'month' | 'quarter' | 'year' (default: 'month')
+ * 
+ * Response:
+ * {
+ *   success: true,
+ *   data: {
+ *     user: { name, totalGems, level, currentStreak },
+ *     kpis: {
+ *       completedTasks: { value: number, change: number },
+ *       gemsEarned: { value: number, change: number },
+ *       activeDays: { value: number, change: number },
+ *       completionRate: { value: number, change: number }
+ *     },
+ *     trends: {
+ *       daily: [{ date, tasks, gems }],
+ *       byCategory: [{ category, count }],
+ *       byPriority: [{ priority, count }]
+ *     },
+ *     leaderboard: [{ userId, name, score, rank }],
+ *     recentActivity: [{ type, description, timestamp }],
+ *     aiInsights?: { summary, recommendations }
+ *   }
+ * }
+ * 
+ * Calculos:
+ * - Compara con periodo anterior para mostrar cambios porcentuales
+ * - Agrupa tendencias por dia, categoria y prioridad
+ * - Genera leaderboard de la organizacion
+ * - Opcionalmente incluye insights de IA
+ */
 export async function GET(request: Req) {
   try {
     const { searchParams } = new URL(request.url)

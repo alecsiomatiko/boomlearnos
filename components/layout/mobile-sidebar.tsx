@@ -16,6 +16,7 @@ type NavItem = {
   href: string
   icon: ComponentType<any>
   badge: string | null
+  adminOnly?: boolean // ✅ Nuevo campo
 }
 
 const defaultNavItems: NavItem[] = [
@@ -24,50 +25,60 @@ const defaultNavItems: NavItem[] = [
     href: "/dashboard/control",
     icon: LayoutDashboard,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Mega Diagnóstico",
     href: "/dashboard/mega-diagnostico",
     icon: Target,
     badge: null,
+    adminOnly: true, // ✅ SOLO ADMIN
   },
   {
     name: "Métricas",
     href: "/dashboard/metricas",
     icon: BarChart3,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Logros",
     href: "/dashboard/logros",
     icon: Trophy,
     badge: "3",
+    adminOnly: false,
   },
   {
     name: "Recompensas",
     href: "/dashboard/recompensas",
     icon: Gift,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Equipo",
     href: "/dashboard/equipo",
     icon: Users,
     badge: "2",
+    adminOnly: false,
   },
   {
     name: "Mensajes",
     href: "/dashboard/mensajes",
     icon: MessageCircle,
     badge: "5",
+    adminOnly: false,
   },
 ]
 
 export function MobileSidebar({ navItems = defaultNavItems }: { navItems?: NavItem[] }) {
   const [userProfile, setUserProfile] = useState<any>(null)
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth() // ✅ Obtener user del contexto
   const router = useRouter()
+
+  // ✅ Check if user is admin
+  const isAdmin = user?.role === 'admin'
 
   // Cargar datos del perfil del usuario
   useEffect(() => {
@@ -95,7 +106,9 @@ export function MobileSidebar({ navItems = defaultNavItems }: { navItems?: NavIt
     <div className="flex h-full flex-col">
       {/* Navigation - Más compacto */}
       <nav className="flex-1 p-2 space-y-1">
-        {navItems.map((item) => {
+        {navItems
+          .filter(item => !item.adminOnly || isAdmin) // ✅ Filtrar items solo-admin
+          .map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           const Icon = item.icon
 

@@ -18,48 +18,56 @@ const navigationItems = [
     href: "/dashboard/control",
     icon: LayoutGrid,
     badge: null,
+    adminOnly: false, // ✅ Accesible para todos
   },
   {
     name: "Mega Diagnóstico",
     href: "/dashboard/mega-diagnostico",
     icon: ShoppingBag,
     badge: null,
+    adminOnly: true, // ✅ SOLO ADMIN
   },
   {
     name: "Análisis IA",
     href: "/dashboard/analisis",
     icon: Brain,
     badge: "Nuevo",
+    adminOnly: false,
   },
   {
     name: "Métricas",
     href: "/dashboard/metricas",
     icon: BarChart3,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Logros",
     href: "/dashboard/logros",
     icon: CheckCircle,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Recompensas",
     href: "/dashboard/recompensas",
     icon: DollarSign,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Equipo",
     href: "/dashboard/equipo",
     icon: Users,
     badge: null,
+    adminOnly: false,
   },
   {
     name: "Mensajes",
     href: "/dashboard/mensajes",
     icon: MessageSquare,
     badge: null,
+    adminOnly: false,
   },
 ]
 
@@ -177,7 +185,9 @@ export default function DashboardSidebar({ onToggle }: DashboardSidebarProps) {
 
         {/* Navigation */}
         <nav className={`flex-1 ${isCollapsed ? "px-4" : "px-6"} space-y-2 transition-all duration-300`}>
-          {navigationItems.map((item) => {
+          {navigationItems
+            .filter(item => !item.adminOnly || isAdmin) // ✅ Filtrar items solo-admin
+            .map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
             const Icon = item.icon
 

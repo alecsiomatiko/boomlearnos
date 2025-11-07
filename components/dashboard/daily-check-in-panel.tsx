@@ -1,3 +1,28 @@
+/**
+ * DailyCheckInPanel - Panel de check-in diario
+ * 
+ * Permite al usuario registrar su estado de energia y prioridad del dia.
+ * Sistema de gamificacion que recompensa el registro diario constante.
+ * 
+ * @param user - Usuario actual que hace el check-in
+ * 
+ * Features:
+ * - Slider de nivel de energia (1-5)
+ * - Input de prioridad del dia
+ * - Mascota que cambia segun nivel de energia
+ * - Recompensa de gemas por check-in
+ * - Racha de dias consecutivos
+ * 
+ * Estados de energia:
+ * - 1-2: Bajo (rojo, mascota cansada)
+ * - 3: Medio (amarillo, mascota normal)
+ * - 4-5: Alto (verde, mascota energica)
+ * 
+ * @example
+ * ```tsx
+ * <DailyCheckInPanel user={currentUser} />
+ * ```
+ */
 "use client"
 
 import { useState } from "react"

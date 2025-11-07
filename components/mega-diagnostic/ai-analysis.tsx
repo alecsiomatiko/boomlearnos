@@ -18,6 +18,7 @@ import {
   TrendingUp
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context" // ✅ Importar useAuth
 
 interface AIAnalysis {
   overview: {
@@ -50,10 +51,13 @@ export default function AIAnalysisComponent() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const router = useRouter()
+  const { user } = useAuth() // ✅ Obtener usuario autenticado
 
   const fetchAnalysis = async () => {
+    if (!user?.id) return; // ✅ Esperar a que el usuario esté disponible
+    
     try {
-      const response = await fetch('/api/diagnostics/ai-analysis')
+      const response = await fetch(`/api/diagnostics/ai-analysis?userId=${user.id}`) // ✅ Pasar userId
       const data = await response.json()
       
       if (data.success) {
@@ -70,8 +74,10 @@ export default function AIAnalysisComponent() {
   }
 
   useEffect(() => {
-    fetchAnalysis()
-  }, [])
+    if (user?.id) { // ✅ Solo cargar cuando el usuario esté disponible
+      fetchAnalysis()
+    }
+  }, [user?.id]) // ✅ Agregar dependencia
 
   const handleRefresh = () => {
     setIsRefreshing(true)

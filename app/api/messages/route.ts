@@ -1,7 +1,46 @@
+/**
+ * API de Mensajeria - Sistema de chat interno
+ * 
+ * Endpoints para gestionar conversaciones y mensajes entre usuarios
+ * de la misma organizacion. Soporta chat 1-a-1 y marcado de lectura.
+ * 
+ * Scoping: Todos los usuarios deben pertenecer a la misma organization_id
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/server/mysql'
 
-// GET /api/messages - Obtener conversaciones y mensajes
+/**
+ * GET /api/messages
+ * 
+ * Obtiene conversaciones del usuario o mensajes de una conversacion especifica.
+ * 
+ * Query Parameters:
+ * @param userId - ID del usuario (requerido)
+ * @param conversationId - ID de conversacion especifica (opcional)
+ * @param type - Tipo de datos: 'all' | 'conversations' | 'messages' (default: 'all')
+ * 
+ * Comportamiento:
+ * - Sin conversationId: Retorna lista de todas las conversaciones del usuario
+ * - Con conversationId: Retorna conversacion + mensajes y marca mensajes como leidos
+ * 
+ * Response (conversacion especifica):
+ * {
+ *   success: true,
+ *   data: {
+ *     conversation: { id, title, createdBy, recipientId, ... },
+ *     messages: [{ id, content, senderId, senderName, isRead, ... }]
+ *   }
+ * }
+ * 
+ * Response (lista conversaciones):
+ * {
+ *   success: true,
+ *   data: {
+ *     conversations: [{ id, title, lastMessage, unreadCount, ... }]
+ *   }
+ * }
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -153,7 +192,37 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/messages - Crear nueva conversación o enviar mensaje
+/**
+ * POST /api/messages
+ * 
+ * Crea una nueva conversacion o envia un mensaje en una existente.
+ * 
+ * Request Body:
+ * {
+ *   senderId: string,        // ID del usuario que envia (requerido)
+ *   recipientId?: string,    // ID del destinatario (requerido si no hay conversationId)
+ *   conversationId?: string, // ID de conversacion existente (opcional)
+ *   content: string,         // Contenido del mensaje (requerido)
+ *   messageType?: string     // 'text' | 'image' | 'file' (default: 'text')
+ * }
+ * 
+ * Logica:
+ * 1. Si no hay conversationId pero si recipientId:
+ *    - Busca conversacion existente entre sender y recipient
+ *    - Si no existe, crea nueva conversacion
+ * 2. Inserta mensaje en la tabla messages
+ * 3. Actualiza last_activity de la conversacion
+ * 
+ * Response:
+ * {
+ *   success: true,
+ *   data: {
+ *     messageId: string,
+ *     conversationId: string,
+ *     createdAt: timestamp
+ *   }
+ * }
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -245,7 +314,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/messages - Marcar mensajes como leídos
+/**
+ * PUT /api/messages
+ * 
+ * Marca mensajes como leidos. Util para actualizar estado de lectura
+ * cuando el usuario abre una conversacion o ve mensajes especificos.
+ * 
+ * Request Body (opcion 1 - mensajes especificos):
+ * {
+ *   messageIds: string[],  // Array de IDs de mensajes
+ *   userId: string         // ID del usuario que marca como leido
+ * }
+ * 
+ * Request Body (opcion 2 - toda la conversacion):
+ * {
+ *   conversationId: string,  // ID de la conversacion
+ *   userId: string           // ID del usuario que marca como leido
+ * }
+ * 
+ * Logica:
+ * - Solo marca mensajes donde sender_id != userId (no puede marcar sus propios mensajes)
+ * - Actualiza is_read = TRUE y read_at = NOW()
+ * 
+ * Response:
+ * {
+ *   success: true,
+ *   data: { updatedCount: number }
+ * }
+ */
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()

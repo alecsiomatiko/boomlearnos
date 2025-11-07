@@ -24,37 +24,57 @@ export async function POST(request: NextRequest) {
 
     // Diferentes estilos de mejora
     const stylePrompts = {
-      jony_ive: `Reescribe el siguiente texto con el estilo elegante, claro y visionario de Jony Ive (ex-diseñador jefe de Apple). 
+      jony_ive: `Eres un editor de texto experto. Tu única tarea es MEJORAR LA REDACCIÓN del siguiente texto, manteniendo EXACTAMENTE el mismo contenido, ideas y mensaje que escribió el usuario.
 
-Características del estilo Jony Ive:
-- Frases simples pero poderosas
-- Enfoque en la esencia y propósito
-- Lenguaje que evoca emociones y valores
-- Visión clara del futuro
-- Elegancia en la simplicidad
-- Conexión humana y significado profundo
+Texto original del usuario: "${text}"
 
-Texto original: "${text}"
+INSTRUCCIONES CRÍTICAS:
+- NO cambies el significado, ideas o información del texto
+- NO agregues contenido que el usuario no mencionó
+- NO elimines información que el usuario proporcionó
+- SOLO mejora: gramática, ortografía, fluidez y claridad
+- Mantén el tono y estilo del usuario
+- Respeta las ideas originales al 100%
 
-Reescribe este texto manteniendo el mensaje principal pero con la elegancia, claridad visionaria y el toque humano característico de Jony Ive. Que sea inspirador pero auténtico.`,
+Devuelve ÚNICAMENTE el texto corregido, sin explicaciones adicionales.`,
 
-      professional: `Mejora el siguiente texto para que sea más profesional, claro y impactante:
+      professional: `Eres un editor de texto experto. MEJORA SOLO LA REDACCIÓN del siguiente texto sin cambiar su contenido.
 
-"${text}"
+Texto del usuario: "${text}"
 
-Hazlo más conciso, elimina redundancias, mejora la estructura y hazlo más persuasivo manteniendo el mensaje original.`,
+REGLAS ESTRICTAS:
+- Mantén TODAS las ideas y conceptos originales del usuario
+- NO inventes o agregues información nueva
+- Solo corrige: ortografía, gramática y fluidez
+- Respeta el mensaje original al 100%
+- Mantén la misma longitud aproximada
 
-      concise: `Haz este texto más conciso y directo al grano:
+Devuelve solo el texto mejorado.`,
 
-"${text}"
+      concise: `Eres un editor de texto. Mejora la REDACCIÓN del siguiente texto haciéndolo más claro, pero SIN cambiar su contenido o significado.
 
-Mantén las ideas principales pero elimina palabras innecesarias.`,
+Texto del usuario: "${text}"
 
-      inspiring: `Reescribe este texto para que sea más inspirador y motivador:
+IMPORTANTE:
+- NO cambies las ideas del usuario
+- NO agregues información nueva
+- Solo mejora la claridad y elimina repeticiones innecesarias
+- Mantén todas las ideas principales
+- Respeta el contenido al 100%
 
-"${text}"
+Devuelve solo el texto mejorado.`,
 
-Mantén el mensaje pero hazlo más emocional e inspirador.`
+      inspiring: `Eres un editor de texto. Mejora la REDACCIÓN del siguiente texto para que suene más inspirador, pero RESPETANDO completamente el contenido original.
+
+Texto del usuario: "${text}"
+
+REGLAS:
+- Mantén TODAS las ideas del usuario
+- NO inventes o agregues información
+- Solo mejora el tono para que sea más motivador
+- Respeta el mensaje original al 100%
+
+Devuelve solo el texto mejorado.`
     }
 
     const prompt = stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.professional
@@ -64,7 +84,7 @@ Mantén el mensaje pero hazlo más emocional e inspirador.`
       messages: [
         {
           role: 'system',
-          content: 'Eres un experto editor y comunicador que ayuda a mejorar textos. Siempre mantienes el mensaje original pero lo mejoras significativamente.'
+          content: 'Eres un editor de texto profesional. Tu ÚNICA tarea es corregir gramática, ortografía y fluidez. NUNCA cambies el contenido, ideas o información del usuario. Solo mejoras la forma en que está escrito, respetando al 100% lo que el usuario quiso decir.'
         },
         {
           role: 'user',
@@ -72,7 +92,7 @@ Mantén el mensaje pero hazlo más emocional e inspirador.`
         }
       ],
       max_tokens: 500,
-      temperature: 0.7
+      temperature: 0.3
     })
 
     const improvedText = completion.choices[0]?.message?.content?.trim()

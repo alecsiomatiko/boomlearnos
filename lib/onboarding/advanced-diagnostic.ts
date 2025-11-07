@@ -16,12 +16,51 @@ export interface DiagnosticSection {
   questions: DiagnosticQuestion[]
 }
 
+// ✨ DIAGNÓSTICO INICIAL DE ONBOARDING - 10 PREGUNTAS ESENCIALES
+// Este cuestionario está diseñado para que la IA pueda generar:
+// 1. Misión empresarial
+// 2. Visión empresarial
+// 3. Valores corporativos
+// 4. Mini diagnóstico inicial (aparecerá en mega-diagnostico)
+
 export const advancedDiagnosticQuestions: DiagnosticSection[] = [
   {
-    id: "capacidades",
-    title: "Capacidades Actuales",
-    icon: "Settings",
-    description: "Evaluemos qué tan preparado está tu negocio",
+    id: "identidad_negocio",
+    title: "Identidad del Negocio",
+    icon: "Building2",
+    description: "Conoce tu negocio y su propósito",
+    questions: [
+      {
+        id: "business_purpose",
+        type: "voice_text",
+        question: "¿Cuál es el propósito principal de tu negocio? ¿Qué problema resuelves?",
+        placeholder: "Describe qué hace tu negocio y por qué existe. Ejemplo: 'Ayudamos a pequeñas empresas a digitalizarse para que puedan competir en el mercado moderno...'",
+        required: true,
+        aiStyle: "inspiring"
+      },
+      {
+        id: "target_customer",
+        type: "voice_text",
+        question: "¿Quién es tu cliente ideal? Descríbelo en detalle",
+        placeholder: "Describe características demográficas, psicográficas, necesidades y comportamientos. Ejemplo: 'Emprendedores entre 30-45 años que buscan escalar su negocio...'",
+        required: true,
+        aiStyle: "professional"
+      },
+      {
+        id: "unique_value",
+        type: "voice_text",
+        question: "¿Qué te hace diferente de tu competencia? ¿Cuál es tu ventaja única?",
+        placeholder: "Explica tu propuesta de valor única. ¿Por qué los clientes deberían elegirte a ti? Sé específico...",
+        required: true,
+        aiStyle: "professional"
+      }
+    ]
+  },
+  {
+    id: "situacion_actual",
+    title: "Situación Actual",
+    icon: "Activity",
+    description: "Evalúa dónde estás ahora",
     questions: [
       {
         id: "digital_readiness",
@@ -32,24 +71,8 @@ export const advancedDiagnosticQuestions: DiagnosticSection[] = [
           { value: "analog", label: "📄 Principalmente análogo (papel, efectivo)" },
           { value: "basic_digital", label: "💻 Digital básico (email, redes sociales)" },
           { value: "intermediate", label: "🔧 Herramientas intermedias (CRM, web)" },
-          { value: "advanced", label: "🚀 Altamente digitalizado (automación, datos)" },
-          { value: "cutting_edge", label: "🤖 Vanguardia (IA, blockchain, IoT)" }
-        ]
-      },
-      {
-        id: "team_skills",
-        type: "checkbox",
-        question: "¿Qué habilidades tiene tu equipo actual? (selecciona todas las que apliquen)",
-        required: true,
-        options: [
-          { value: "sales", label: "🎯 Ventas y negociación" },
-          { value: "marketing", label: "📱 Marketing digital" },
-          { value: "tech", label: "💻 Desarrollo técnico" },
-          { value: "design", label: "🎨 Diseño y creatividad" },
-          { value: "operations", label: "⚙️ Operaciones y logística" },
-          { value: "finance", label: "💰 Finanzas y contabilidad" },
-          { value: "leadership", label: "👥 Liderazgo y gestión" },
-          { value: "customer_service", label: "🤝 Atención al cliente" }
+          { value: "advanced", label: "� Altamente digitalizado (automación, datos)" },
+          { value: "cutting_edge", label: "� Vanguardia (IA, blockchain, IoT)" }
         ]
       },
       {
@@ -67,60 +90,27 @@ export const advancedDiagnosticQuestions: DiagnosticSection[] = [
           { value: "cash_flow", label: "💸 Flujo de efectivo" },
           { value: "market_positioning", label: "🎯 Posicionamiento en mercado" }
         ]
-      }
-    ]
-  },
-  {
-    id: "recursos",
-    title: "Recursos y Limitaciones",
-    icon: "DollarSign",
-    description: "Entendamos con qué recursos cuentas",
-    questions: [
-      {
-        id: "monthly_budget",
-        type: "radio",
-        question: "¿Cuál es tu presupuesto mensual disponible para hacer crecer el negocio?",
-        required: true,
-        options: [
-          { value: "minimal", label: "💡 Menos de $500 USD" },
-          { value: "small", label: "🌱 $500 - $2,000 USD" },
-          { value: "medium", label: "🚀 $2,000 - $10,000 USD" },
-          { value: "large", label: "💼 $10,000 - $50,000 USD" },
-          { value: "enterprise", label: "🏢 Más de $50,000 USD" }
-        ]
       },
       {
-        id: "time_availability",
+        id: "team_size_stage",
         type: "radio",
-        question: "¿Cuánto tiempo puedes dedicar semanalmente a implementar mejoras?",
+        question: "¿En qué etapa se encuentra tu negocio?",
         required: true,
         options: [
-          { value: "minimal", label: "⏰ 1-5 horas (fines de semana)" },
-          { value: "part_time", label: "📅 5-20 horas (algunas tardes)" },
-          { value: "substantial", label: "💪 20-40 horas (medio tiempo)" },
-          { value: "full_time", label: "🎯 40+ horas (tiempo completo)" }
-        ]
-      },
-      {
-        id: "learning_preference",
-        type: "radio",
-        question: "¿Cómo prefieres aprender nuevas habilidades empresariales?",
-        required: true,
-        options: [
-          { value: "hands_on", label: "🛠️ Aprendiendo haciendo (prueba y error)" },
-          { value: "courses", label: "📚 Cursos estructurados y certificaciones" },
-          { value: "mentorship", label: "👨‍🏫 Mentoría y consultoría personalizada" },
-          { value: "community", label: "👥 Comunidades y networking" },
-          { value: "self_research", label: "🔍 Investigación independiente" }
+          { value: "idea", label: "💡 Idea / Pre-lanzamiento" },
+          { value: "startup", label: "🚀 Startup (0-2 años, menos de 10 empleados)" },
+          { value: "growth", label: "� Crecimiento (2-5 años, 10-50 empleados)" },
+          { value: "mature", label: "� Consolidado (5+ años, 50+ empleados)" },
+          { value: "enterprise", label: "� Empresa establecida (100+ empleados)" }
         ]
       }
     ]
   },
   {
-    id: "metas_especificas",
-    title: "Metas Específicas",
+    id: "recursos_objetivos",
+    title: "Recursos y Objetivos",
     icon: "Target",
-    description: "Definamos objetivos medibles y alcanzables",
+    description: "Define tus metas y recursos disponibles",
     questions: [
       {
         id: "revenue_goal",
@@ -136,72 +126,36 @@ export const advancedDiagnosticQuestions: DiagnosticSection[] = [
         ]
       },
       {
-        id: "success_metric",
-        type: "radio",
-        question: "¿Cuál sería el indicador más importante de éxito para ti?",
+        id: "core_values",
+        type: "checkbox",
+        question: "¿Cuáles son los valores más importantes para tu empresa? (elige hasta 5)",
         required: true,
         options: [
-          { value: "revenue", label: "💰 Ingresos totales" },
-          { value: "customers", label: "👥 Número de clientes" },
-          { value: "market_share", label: "📊 Participación de mercado" },
-          { value: "team_size", label: "🏢 Tamaño del equipo" },
-          { value: "impact", label: "🌍 Impacto social/ambiental" },
-          { value: "freedom", label: "🗽 Libertad personal y flexibilidad" },
-          { value: "recognition", label: "🏆 Reconocimiento en la industria" }
+          { value: "innovation", label: "� Innovación" },
+          { value: "quality", label: "⭐ Calidad" },
+          { value: "customer_focus", label: "🤝 Enfoque al cliente" },
+          { value: "integrity", label: "✨ Integridad" },
+          { value: "teamwork", label: "� Trabajo en equipo" },
+          { value: "sustainability", label: "� Sustentabilidad" },
+          { value: "excellence", label: "🏆 Excelencia" },
+          { value: "social_impact", label: "🌍 Impacto social" },
+          { value: "agility", label: "⚡ Agilidad" },
+          { value: "transparency", label: "� Transparencia" }
         ]
       },
       {
-        id: "next_milestone",
+        id: "long_term_vision",
         type: "voice_text",
-        question: "¿Cuál es el próximo gran hito que quieres alcanzar en tu negocio?",
-        placeholder: "Describe específicamente qué quieres lograr en los próximos 3-6 meses. Sé tan detallado como puedas...",
+        question: "¿Dónde quieres ver tu negocio en 5 años? ¿Cuál es tu visión a largo plazo?",
+        placeholder: "Describe tu visión: tamaño, impacto, posición en el mercado, legado. Ejemplo: 'En 5 años queremos ser la empresa líder en...'",
         required: true,
-        aiStyle: "professional"
-      }
-    ]
-  },
-  {
-    id: "desafios_actuales",
-    title: "Desafíos Actuales",
-    icon: "AlertTriangle",
-    description: "Identifiquemos qué te está frenando",
-    questions: [
-      {
-        id: "urgent_problem",
-        type: "radio",
-        question: "¿Cuál es el problema más urgente que necesitas resolver?",
-        required: true,
-        options: [
-          { value: "cash_flow", label: "💸 Problemas de flujo de efectivo" },
-          { value: "customer_acquisition", label: "🎯 Dificultad para conseguir clientes" },
-          { value: "product_market_fit", label: "🎪 Producto no encaja en el mercado" },
-          { value: "team_issues", label: "👥 Problemas con el equipo" },
-          { value: "competition", label: "⚔️ Competencia muy agresiva" },
-          { value: "scaling", label: "📈 No sé cómo escalar" },
-          { value: "burnout", label: "😴 Agotamiento personal" },
-          { value: "regulation", label: "📋 Problemas regulatorios/legales" }
-        ]
+        aiStyle: "inspiring"
       },
       {
-        id: "fear_factor",
-        type: "radio",
-        question: "¿Qué te genera más ansiedad sobre el futuro de tu negocio?",
-        required: true,
-        options: [
-          { value: "financial_stability", label: "💰 Estabilidad financiera personal" },
-          { value: "business_failure", label: "📉 Que fracase el negocio" },
-          { value: "competition", label: "🏃‍♂️ Quedarme atrás de la competencia" },
-          { value: "team_dependence", label: "👥 Dependencia del equipo clave" },
-          { value: "market_changes", label: "🌊 Cambios drásticos en el mercado" },
-          { value: "technology", label: "🤖 Disrupciones tecnológicas" },
-          { value: "work_life_balance", label: "⚖️ Perder balance vida-trabajo" }
-        ]
-      },
-      {
-        id: "support_system",
+        id: "immediate_challenge",
         type: "voice_text",
-        question: "¿Qué tipo de apoyo sientes que más necesitas en este momento?",
-        placeholder: "Puede ser apoyo técnico, emocional, financiero, estratégico... Explica qué tipo de ayuda te haría la mayor diferencia.",
+        question: "¿Cuál es el desafío más urgente que necesitas resolver en los próximos 3 meses?",
+        placeholder: "Sé específico sobre el problema actual y por qué es urgente. Ejemplo: 'Necesitamos duplicar nuestros clientes porque...'",
         required: true,
         aiStyle: "professional"
       }

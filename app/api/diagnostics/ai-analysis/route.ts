@@ -5,23 +5,79 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 [AI-ANALYSIS] Iniciando análisis IA...')
 
-    // Obtener el usuario más reciente
+    // ✅ OBTENER userId DE LOS QUERY PARAMS (seguridad)
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID requerido' },
+        { status: 400 }
+      )
+    }
+
+    // Obtener información del usuario
     const userQuery = `
       SELECT id, first_name, last_name, email, name
       FROM users 
-      ORDER BY created_at DESC
+      WHERE id = ?
       LIMIT 1
     `
-    const userResult = await executeQuery(userQuery, []) as any[]
+    const userResult = await executeQuery(userQuery, [userId]) as any[]
     if (!userResult || userResult.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Usuario no encontrado' },
         { status: 404 }
       )
     }
-    const userId = userResult[0].id
     const userName = userResult[0].name || `${userResult[0].first_name || ''} ${userResult[0].last_name || ''}`.trim()
     console.log('🔍 [AI-ANALYSIS] Analizando para usuario:', userName)
+
+    // ✅ VERIFICAR SI YA EXISTE ANÁLISIS GUARDADO
+    try {
+      const existingAnalysisQuery = `
+        SELECT analysis_data, created_at
+        FROM ai_analysis
+        WHERE user_id = ? AND analysis_type = 'general'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+      const existingAnalysis = await executeQuery(existingAnalysisQuery, [userId]) as any[]
+      
+      if (existingAnalysis && existingAnalysis.length > 0) {
+        console.log('✅ [AI-ANALYSIS] Usando análisis guardado previamente')
+        const savedAnalysis = JSON.parse(existingAnalysis[0].analysis_data)
+        return NextResponse.json({
+          success: true,
+          analysis: savedAnalysis,
+          cached: true,
+          generatedAt: existingAnalysis[0].created_at
+        })
+      }
+    } catch (error) {
+      console.log('⚠️ [AI-ANALYSIS] Tabla ai_analysis no existe, creándola...')
+      // Crear tabla si no existe
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS ai_analysis (
+          id VARCHAR(36) PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          analysis_type ENUM('general', 'module') NOT NULL DEFAULT 'general',
+          module_id VARCHAR(36) NULL,
+          module_code VARCHAR(100) NULL,
+          analysis_data JSON NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_user_id (user_id),
+          INDEX idx_module_code (module_code),
+          INDEX idx_user_module (user_id, module_code),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `
+      await executeQuery(createTableQuery, [])
+      console.log('✅ [AI-ANALYSIS] Tabla ai_analysis creada')
+    }
+
+    console.log('🤖 [AI-ANALYSIS] Generando nuevo análisis...')
 
     // Llamar al endpoint de plan estratégico IA
     let strategicPlan = null
@@ -90,9 +146,29 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ [AI-ANALYSIS] Análisis generado exitosamente')
 
+    // ✅ GUARDAR ANÁLISIS EN LA BASE DE DATOS
+    try {
+      const { randomUUID } = require('crypto')
+      const analysisId = randomUUID()
+      const saveAnalysisQuery = `
+        INSERT INTO ai_analysis (id, user_id, analysis_type, analysis_data)
+        VALUES (?, ?, 'general', ?)
+      `
+      await executeQuery(saveAnalysisQuery, [
+        analysisId,
+        userId,
+        JSON.stringify(analysis)
+      ])
+      console.log('✅ [AI-ANALYSIS] Análisis guardado en base de datos')
+    } catch (saveError) {
+      console.error('⚠️ [AI-ANALYSIS] Error al guardar análisis:', saveError)
+      // No fallar si no se puede guardar, solo advertir
+    }
+
     return NextResponse.json({
       success: true,
-      analysis
+      analysis,
+      cached: false
     })
 
   } catch (error) {
